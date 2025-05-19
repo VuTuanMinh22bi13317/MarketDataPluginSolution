@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MarketDataPlugin")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+be2d6ac49e57063ff2d3f6ab9bdd82ec46fb4b31")]
 [assembly: System.Reflection.AssemblyProductAttribute("MarketDataPlugin")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MarketDataPlugin")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

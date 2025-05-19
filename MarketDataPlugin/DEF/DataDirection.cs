@@ -1,9 +1,11 @@
 namespace MarketDataPlugin
 {
-	// Enum for specifying the direction of data flow
-	public enum DataDirection
-	{
-		Inbound,
-		Outbound
-	}
+    public enum DataDirection
+    {   
+        In,
+        Out,
+        Inbound,
+        Outbound,
+         // Added to fix CS0117
+    }
 }

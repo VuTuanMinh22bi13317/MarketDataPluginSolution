@@ -1,19 +1,23 @@
 namespace MarketDataPlugin
 {
-    public class FieldDef : MsgChildDef
+    public class FieldDef : FixItem
     {
-        public FieldType Type { get; set; }
-        public MsgChildDef? ChildDef { get; set; }
+        public FieldType Type { get; }
+        public bool Required { get; }
+        public string? DataField { get; }
+        public bool IsLog { get; }
 
-        public FieldDef(int tag, string name, FieldType type, bool required)
-            : base(tag, name, required)
+        public FieldDef(string tag, string name, FieldType type, bool required, string? dataField = null, bool isLog = false) : base(tag, name)
         {
             Type = type;
+            Required = required;
+            DataField = dataField;
+            IsLog = isLog;
         }
 
-        public override void Parse(string data)
+        public override void Parse(string fixMessage)
         {
-            // Implement field parsing logic if needed
+            throw new NotImplementedException("Parse is not implemented for FieldDef; use Field class for runtime parsing.");
         }
     }
 }

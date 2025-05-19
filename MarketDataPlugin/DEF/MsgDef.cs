@@ -1,32 +1,24 @@
+using MarketDataPlugin;
+
 namespace MarketDataPlugin
 {
-    using System;
-    using System.Collections.Generic;
-
     public class MsgDef : FixItem
     {
-        public string MsgType { get; set; }
-        public DataDirection Direction { get; set; } // Added to match FixParser.cs
-        public List<MsgChildDef> Children { get; set; }
+        public string MsgType { get; }
+        public DataDirection Direction { get; }
+        public List<object> Children { get; } = new List<object>();
 
-        public MsgDef(int tag, string name, string msgType, DataDirection direction)
-            : base(tag, name ?? throw new ArgumentNullException(nameof(name)))
+        public MsgDef(string name, string msgType, DataDirection direction) : base("", name)
         {
-            MsgType = msgType ?? throw new ArgumentNullException(nameof(msgType));
+            MsgType = msgType;
             Direction = direction;
-            Children = new List<MsgChildDef>();
         }
 
-        public void AddChild(MsgChildDef child)
-        {
-            if (child == null)
-                throw new ArgumentNullException(nameof(child));
-            Children.Add(child);
-        }
+        public void AddChild(object child) => Children.Add(child);
 
-        public override void Parse(string data)
+        public override void Parse(string fixMessage)
         {
-            // MsgDef is a definition, not a runtime instance, so no parsing is needed
+            throw new NotImplementedException("Parse is not implemented for MsgDef; use Msg class for runtime parsing.");
         }
     }
 }

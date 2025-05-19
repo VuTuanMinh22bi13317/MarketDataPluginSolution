@@ -1,103 +1,57 @@
 namespace MarketDataPlugin
 {
-    using System;
-    using System.Collections.Generic;
-    using System.Collections.ObjectModel;
-    using System.Linq;
-
-    // Represents an instance of a loop in a FIX message
-    public class Loop : FixItem
+    public class Loop : MsgChildDef
     {
-        private readonly List<FixItem> _children;
+        public List<Field> Fields { get; } = new List<Field>();
+        public List<Loop> Loops { get; } = new List<Loop>();
 
-        // List of child items within the loop instance
-        public ReadOnlyCollection<FixItem> Children => _children.AsReadOnly();
-
-        // Reference to the loop definition (optional)
-        public LoopDef? Definition { get; set; }
-
-        // Constructor to initialize loop properties
-        public Loop(string name, LoopDef? definition = null)
-            : base(0, name ?? throw new ArgumentNullException(nameof(name))) // Updated for int Tag
+        public Loop(string name, LoopDef? definition = null) : base(definition?.Tag ?? "", name)
         {
-            _children = new List<FixItem>();
-            Definition = definition;
-        }
-
-        // Add a child item to the loop instance
-        public void AddChild(FixItem child)
-        {
-            if (child == null)
-                throw new ArgumentNullException(nameof(child));
-            _children.Add(child);
-        }
-
-        // Recursively get all fields within the loop and its nested loops
-        public IEnumerable<Field> GetAllFields()
-        {
-            foreach (var child in _children)
+            if (definition != null)
             {
-                if (child is Field field)
-                    yield return field;
-                else if (child is Loop nestedLoop)
+                foreach (var child in definition.Children)
                 {
-                    foreach (var nestedField in nestedLoop.GetAllFields())
-                        yield return nestedField;
+                    if (child is FieldDef fieldDef)
+                    {
+                        Fields.Add(new Field(fieldDef.Tag, fieldDef.Name ?? "Unknown", fieldDef.Type, fieldDef.Required));
+                    }
+                    else if (child is LoopDef loopDef)
+                    {
+                        Loops.Add(new Loop(loopDef.Name ?? "Unknown", loopDef));
+                    }
                 }
             }
         }
 
-        // Parse the loop data from a FIX message
-        public override void Parse(string data)
+        public override void Parse(string fixMessage)
         {
-            if (Definition == null || string.IsNullOrEmpty(data))
-                return;
+            // Expecting fixMessage to contain a repeating group (e.g., "268=2^269=0^270=100...")
+            // Split by FIX delimiter (^) and process each field
+            if (string.IsNullOrEmpty(fixMessage))
+                throw new ArgumentException("FIX message is empty.");
 
-            var tvps = data.Split('\x01', StringSplitOptions.RemoveEmptyEntries)
-                .Select(tvpStr => new TVP(tvpStr))
-                .Where(tvp => tvp.HasTag && tvp.HasValue)
-                .ToList();
+            var parts = fixMessage.Split('^');
+            if (parts.Length == 0)
+                throw new ArgumentException($"Invalid FIX message for loop {Name}: {fixMessage}");
 
-            // Find the counter tag (e.g., 268 for NoMDEntries)
-            int counter = 0;
-            var counterTvp = tvps.FirstOrDefault(tvp => tvp.Tag == Definition.Tag); // Tag is int
-            if (counterTvp != null)
+            foreach (var part in parts)
             {
-                if (int.TryParse(counterTvp.Value, out int count))
+                foreach (var field in Fields)
                 {
-                    counter = count;
+                    try
+                    {
+                        field.Parse(part);
+                    }
+                    catch (ArgumentException) { /* Skip fields that don't match */ }
                 }
-                tvps.Remove(counterTvp); // Remove the counter TVP from further processing
-            }
-            else
-            {
-                Console.WriteLine($"Counter tag {Definition.Tag} not found in message.");
-                return;
-            }
 
-            // Parse repeating groups based on the counter
-            for (int i = 0; i < counter; i++)
-            {
-                // For each iteration, create a set of fields based on the LoopDef
-                foreach (var defChild in Definition.Children) // Changed from defChild.Item
+                foreach (var loop in Loops)
                 {
-                    if (defChild is FieldDef fieldDef)
+                    try
                     {
-                        var fieldTvp = tvps.FirstOrDefault(tvp => tvp.Tag == fieldDef.Tag); // Tag is int
-                        if (fieldTvp != null)
-                        {
-                            var field = new Field(fieldDef.Tag, fieldDef.Name, fieldDef.Type, fieldDef.Required);
-                            field.FromString(fieldTvp.Value);
-                            AddChild(field);
-                            tvps.Remove(fieldTvp); // Remove processed TVP
-                        }
+                        loop.Parse(part);
                     }
-                    else if (defChild is LoopDef nestedLoopDef)
-                    {
-                        var nestedLoop = new Loop(nestedLoopDef.Name, nestedLoopDef);
-                        nestedLoop.Parse(data); // Recursive parsing for nested loops
-                        AddChild(nestedLoop);
-                    }
+                    catch (ArgumentException) { /* Skip loops that don't match */ }
                 }
             }
         }

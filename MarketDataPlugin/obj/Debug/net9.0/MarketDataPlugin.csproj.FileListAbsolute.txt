@@ -75,3 +75,4 @@ C:\Users\Admin\MarketDataPluginSolution\MarketDataPlugin\obj\Debug\net9.0\refint
 C:\Users\Admin\MarketDataPluginSolution\MarketDataPlugin\obj\Debug\net9.0\MarketDataPlugin.pdb
 C:\Users\Admin\MarketDataPluginSolution\MarketDataPlugin\obj\Debug\net9.0\MarketDataPlugin.genruntimeconfig.cache
 C:\Users\Admin\MarketDataPluginSolution\MarketDataPlugin\obj\Debug\net9.0\ref\MarketDataPlugin.dll
+C:\Users\Admin\MarketDataPluginSolution\MarketDataPlugin\obj\Debug\net9.0\MarketDataPlugin.sourcelink.json

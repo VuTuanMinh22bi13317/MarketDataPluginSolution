@@ -1,38 +1,22 @@
 namespace MarketDataPlugin
 {
-    using System;
-    using System.Collections.Generic;
-
-    public class LoopDef : MsgChildDef
+    public class LoopDef : FixItem
     {
-        // List of child definitions within the loop
-        public List<MsgChildDef> Children { get; set; }
+        public string Counter { get; }
+        public bool Required { get; }
+        public List<object> Children { get; } = new List<object>();
 
-        // The tag for the counter field (e.g., 268 for NO_MD_ENTRIES)
-        public int Counter { get; set; }
-
-        // Constructor to initialize loop definition properties
-        public LoopDef(string name, int tag, int counter, bool required)
-            : base(tag, name, required)
+        public LoopDef(string tag, string name, string counter, bool required) : base(tag, name)
         {
-            if (string.IsNullOrWhiteSpace(name))
-                throw new ArgumentException("Name cannot be empty or whitespace.", nameof(name));
             Counter = counter;
-            Children = new List<MsgChildDef>();
+            Required = required;
         }
 
-        // Add a child definition to the loop
-        public void AddChild(MsgChildDef child)
-        {
-            if (child == null)
-                throw new ArgumentNullException(nameof(child));
-            Children.Add(child);
-        }
+        public void AddChild(object child) => Children.Add(child);
 
-        // Override Parse method (not used for definitions)
-        public override void Parse(string data)
+        public override void Parse(string fixMessage)
         {
-            // LoopDef is a definition, not a runtime instance, so no parsing is needed
+            throw new NotImplementedException("Parse is not implemented for LoopDef; use Loop class for runtime parsing.");
         }
     }
 }

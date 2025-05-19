@@ -1,39 +1,55 @@
 namespace MarketDataPlugin
 {
-    public class Msg : FixItem
+    public class Msg : MsgChildDef
     {
-        public string MsgType { get; set; }
-        public List<FixItem> Children { get; set; }
+        public List<Field> Fields { get; } = new List<Field>();
+        public List<Loop> Loops { get; } = new List<Loop>();
 
-        public Msg(string name, string msgType)
-            : base(0, name ?? throw new ArgumentNullException(nameof(name))) // Tag=0 since Msg doesn't have a tag
+        public Msg(string name, MsgDef definition) : base("", name)
         {
-            MsgType = msgType ?? throw new ArgumentNullException(nameof(msgType));
-            Children = new List<FixItem>();
-        }
-
-        public void AddChild(FixItem child)
-        {
-            if (child == null)
-                throw new ArgumentNullException(nameof(child));
-            Children.Add(child);
-        }
-
-        public override void Parse(string data)
-        {
-            var tvps = data.Split('\x01', StringSplitOptions.RemoveEmptyEntries)
-                .Select(tvpStr => new TVP(tvpStr))
-                .Where(tvp => tvp.HasTag && tvp.HasValue)
-                .ToArray();
-
-            foreach (var tvp in tvps)
+            foreach (var child in definition.Children)
             {
-                foreach (var child in Children)
+                if (child is FieldDef fieldDef)
                 {
-                    if (child is Field field && field.Tag == tvp.Tag) // No conversion needed
+                    Fields.Add(new Field(fieldDef.Tag, fieldDef.Name, fieldDef.Type, fieldDef.Required));
+                }
+                else if (child is LoopDef loopDef)
+                {
+                    Loops.Add(new Loop(loopDef.Name, loopDef));
+                }
+            }
+        }
+
+        public bool IsMsgType(string msgType) => msgType == Tag;
+
+        public override void Parse(string fixMessage)
+        {
+            // Expecting fixMessage in the format "field1^field2^..." (e.g., "35=d^55=ABC^268=2...")
+            if (string.IsNullOrEmpty(fixMessage))
+                throw new ArgumentException("FIX message is empty.");
+
+            var parts = fixMessage.Split('^');
+            if (parts.Length == 0)
+                throw new ArgumentException($"Invalid FIX message for msg {Name}: {fixMessage}");
+
+            foreach (var part in parts)
+            {
+                foreach (var field in Fields)
+                {
+                    try
                     {
-                        field.FromString(tvp.Value);
+                        field.Parse(part);
                     }
+                    catch (ArgumentException) { /* Skip fields that don't match */ }
+                }
+
+                foreach (var loop in Loops)
+                {
+                    try
+                    {
+                        loop.Parse(part);
+                    }
+                    catch (ArgumentException) { /* Skip loops that don't match */ }
                 }
             }
         }
