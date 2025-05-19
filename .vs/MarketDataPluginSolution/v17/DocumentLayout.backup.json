@@ -1,0 +1,267 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\Admin\\MarketDataPluginSolution\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Field.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\Field.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\MsgChildDef.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\DEF\\MsgChildDef.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\MsgDef.cs||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\DEF\\MsgDef.cs||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\FieldDef.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\DEF\\FieldDef.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\DataDirection.cs||{8B382828-6202-11D1-8870-0000F87579D2}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\DEF\\DataDirection.cs||{8B382828-6202-11D1-8870-0000F87579D2}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Specs\\MDDS-Specs.xml||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\Specs\\MDDS-Specs.xml||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\FieldType.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\DEF\\FieldType.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\LoopDef.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\DEF\\LoopDef.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Specs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\Specs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Loop.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\Loop.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Parsers\\FixParser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\Parsers\\FixParser.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\Program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Msg.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\Msg.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\FixItem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\FixItem.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\TVP.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:MarketDataPlugin\\TVP.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 14,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "DataDirection.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\DataDirection.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\DEF\\DataDirection.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\DataDirection.cs",
+              "RelativeToolTip": "MarketDataPlugin\\DEF\\DataDirection.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAcAAAACAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T06:56:55.697Z",
+              "IsPinned": true
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{aa2115a1-9712-457b-9047-dbb71ca2cdd2}"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "MDDS-Specs.xml",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Specs\\MDDS-Specs.xml",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\Specs\\MDDS-Specs.xml",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Specs\\MDDS-Specs.xml",
+              "RelativeToolTip": "MarketDataPlugin\\Specs\\MDDS-Specs.xml",
+              "ViewState": "AgIAAGMAAAAAAAAAAAAAAGILAAAIAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003576|",
+              "WhenOpened": "2025-05-14T10:31:41.151Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "FixParser.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Parsers\\FixParser.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\Parsers\\FixParser.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Parsers\\FixParser.cs",
+              "RelativeToolTip": "MarketDataPlugin\\Parsers\\FixParser.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAIUAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T09:34:35.406Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "FieldType.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\FieldType.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\DEF\\FieldType.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\FieldType.cs",
+              "RelativeToolTip": "MarketDataPlugin\\DEF\\FieldType.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAoAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T08:36:09.488Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "LoopDef.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\LoopDef.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\DEF\\LoopDef.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\LoopDef.cs",
+              "RelativeToolTip": "MarketDataPlugin\\DEF\\LoopDef.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:22:38.231Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "Loop.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Loop.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\Loop.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Loop.cs",
+              "RelativeToolTip": "MarketDataPlugin\\Loop.cs",
+              "ViewState": "AgIAAFsAAAAAAAAAAAAwwGcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:24:03.355Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "MsgDef.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\MsgDef.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\DEF\\MsgDef.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\MsgDef.cs",
+              "RelativeToolTip": "MarketDataPlugin\\DEF\\MsgDef.cs",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAwwB4AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:35:18.588Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "Specs.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Specs.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\Specs.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Specs.cs",
+              "RelativeToolTip": "MarketDataPlugin\\Specs.cs",
+              "ViewState": "AgIAACYAAAAAAAAAAAAwwEoAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:25:11.942Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 14,
+              "Title": "TVP.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\TVP.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\TVP.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\TVP.cs",
+              "RelativeToolTip": "MarketDataPlugin\\TVP.cs",
+              "ViewState": "AgIAAEsAAAAAAAAAAAAwwF0AAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:39:46.218Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "FieldDef.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\FieldDef.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\DEF\\FieldDef.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\FieldDef.cs",
+              "RelativeToolTip": "MarketDataPlugin\\DEF\\FieldDef.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAACcAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:34:58.549Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 13,
+              "Title": "FixItem.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\FixItem.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\FixItem.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\FixItem.cs",
+              "RelativeToolTip": "MarketDataPlugin\\FixItem.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAkAAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:39:21.241Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 11,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Program.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\Program.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Program.cs",
+              "RelativeToolTip": "MarketDataPlugin\\Program.cs",
+              "ViewState": "AgIAAGYAAAAAAAAAAAAwwHUAAAABAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T06:06:49.779Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 12,
+              "Title": "Msg.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Msg.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\Msg.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Msg.cs",
+              "RelativeToolTip": "MarketDataPlugin\\Msg.cs",
+              "ViewState": "AgIAAAYAAAAAAAAAAAAAABUAAABBAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:19:47.747Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Field.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Field.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\Field.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\Field.cs",
+              "RelativeToolTip": "MarketDataPlugin\\Field.cs",
+              "ViewState": "AgIAAGkAAAAAAAAAAAAAAAYAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:15:16.456Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "MsgChildDef.cs",
+              "DocumentMoniker": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\MsgChildDef.cs",
+              "RelativeDocumentMoniker": "MarketDataPlugin\\DEF\\MsgChildDef.cs",
+              "ToolTip": "C:\\Users\\Admin\\MarketDataPluginSolution\\MarketDataPlugin\\DEF\\MsgChildDef.cs",
+              "RelativeToolTip": "MarketDataPlugin\\DEF\\MsgChildDef.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAUAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-14T07:28:33.097Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

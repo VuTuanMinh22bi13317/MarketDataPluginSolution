@@ -1,0 +1,2915 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Specs
+  BeginString="FIX.4.4"
+  OutMsgChecksum="True"
+  InMsgChecksum="False"
+  TimeZone="7"
+  >
+  <!--
+    <Msg Name="NewOrderSingle"
+      Type="D"
+      Direction="InOut": "In" - Default, "Out", "InOut"
+      UseSubThread="False" - Default, True
+      IsApplication="True" - Default, "False"
+      TableName="INF_NEW_ORDER_SINGLE" Name of table to be inserted or query
+      QueryFunction="gw_pkg.get_new_order_single" Query function, has higher priority
+      ArchiverId = 0 
+    >
+    </Msg>
+    <Field Tag="8"
+      Name="BeginString": Not allowed null
+      Direction= "In", "Out", "InOut" - Default
+      Type= "String" - Default, "Int", "Date", "Double"
+      DataField="CL_ORD_ID"
+      DateFormat="yyyyMMdd HH:mm:ss" for Type="Date" only
+      DefaultValue="FIX.4.4"
+      IsLog="True" - Default, False
+    />
+  -->
+  <!--Checked against 0.9A22 20240327 (0.9A21,0.9A22 just update possible values)-->
+  <Header>
+    <!--
+        Required: Y
+        Length: 7
+        Note: FIX.4.4
+      -->
+    <Field Tag="8" Name="BeginString" DefaultValue="FIX.4.4" IsLog="False"/>
+    <!--
+        Required: Y
+        Length: 6
+        Note: Length filed
+      -->
+    <Field Tag="9" Name="BodyLength" Type="Int" IsLog="False"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: Specification of MsyType(35)
+                d = Security Definition 
+                f = Security Status 
+                X = Price 
+                W = Price Recovery 
+                M1 = Index 
+                M2 = Investor per Industry 
+                M3 = Investor per Symbol 
+                M4 = Top N Members per Symbol 
+                M7 = Security Information Notification
+                M8 = Symbol Closing Information 
+                MA = Open Interest 
+                MD = Volatility Interruption 
+                ME = Deem Trade Price 
+                MF = Foreigner Order Limit 
+                MH = Market Maker Information 
+                MI = Symbol Event 
+                MX = Price Limit Expansion 
+                MW = Random End 
+                ML = Index Constituents Information 
+                MM = ETF iNav 
+                MN = ETF iIndex 
+                MO = ETF TrackingError 
+                MP = Top N Symbols with Trading Quantity 
+                MQ = Top N Symbols in Current Price 
+                MR = Top N Symbols with High Ratio of Price 
+                MS = Top N Symbols with Low Ratio of Price 
+                MT = Trading Result of Foreign Investors 
+                MU = Disclosure 
+                MV = Time Stamp (Polling)
+      -->
+    <Field Tag="35" Name="MsgType" IsLog="True"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Sender(Member No)
+      -->
+    <Field Tag="49" Name="SenderCompId" IsLog="False"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Target(Counter Member No)
+      -->
+    <Field Tag="56" Name="TargetCompId" IsLog="False"/>
+    <!--
+        Required: Y
+        Length: 11
+        Note: Session sequence number
+      -->
+    <Field Tag="34" Name="MsgSeqNum" Type="Int" IsLog="True" Direction="In"/>
+    <!--
+        Required: Y
+        Length: 21
+        Note: Time of message transmission
+      -->
+    <Field Tag="52" Name="SendingTime" Type="Date" DateFormat="yyyyMMdd HH:mm:ss.fff" TimeZoneEffected="True"  IsLog="False"/>
+  </Header>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="SecurityDefinition" MsgType="d" Direction="In" IsApplication="True" TableName="INF_SECURITY_DEFINITION" ArchiveFunction="mdds_pkg.archive_security_definition">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market 
+          <Hochiminh Exchange>
+          - STO: HoSE Stock Market 
+          - BDO: HoSE Bond Market 
+          - RPO: HoSE Repo Market 
+          <Hanoi Exchange> 
+          - STX: HNX Listed Stock Market
+          - BDX: HNX Government Bond Market 
+          - DVX: HNX Derivative Market 
+          - UPX: HNX UpCoM Stock Market 
+          - HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded 
+          G1 : Main 
+          G2 : Pre open 
+          G3 : Post closing 
+          G4 : Odd lot 
+          G7 : Buy-in 
+          G8 : Sell-out 
+          T1 : Negotiation (regular) 
+          T4 : Negotiation (regular for Odd lot) 
+          T2 : Negotiation (pre) 
+          T3 : Negotiation (post) 
+          T6 : Negotiation (post for Odd lot) 
+          R1 : Negotiation (Repo) 
+          AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Entire number of messages for issue information transmission or for a set of statistics results
+      -->
+    <Field Tag="911" Name="TotNumReports" Type="Int"  DataField="TOT_NUM_REPORTS"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: The unique ID assigned by Exchange 
+          HO: HoSE 
+          HX: HNX
+      -->
+    <Field Tag="207" Name="SecurityExchange" DataField="SECURITY_EXCHANGE"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). 
+            Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 20
+        Note: Symbolic characters of an instrument. It might be used as ticker code (a.k.a. trading code, local code, stock code, bond code and so forth)
+      -->
+    <Field Tag="30624" Name="TickerCode" DataField="TICKER_CODE"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: A short unique code for an instrument which is determined at exchange and used for more convenience than 12-digit instrument code (ISIN code). 
+            It may be used as a part of Repo instrument's ISIN code
+      -->
+    <Field Tag="30628" Name="SymbolShortCode" DataField="SYMBOL_SHORT_CODE"/>
+    <!--
+        Required: Y
+        Length: 120
+        Note: Instrument name
+      -->
+    <Field Tag="30629" Name="SymbolName" DataField="SYMBOL_NAME"/>
+    <!--
+        Required: Y
+        Length: 80
+        Note: Instrument English name
+      -->
+    <Field Tag="30630" Name="SymbolEnglishName" DataField="SYMBOL_ENGLISH_NAME"/>
+    <!--
+        Required: Y
+        Length: 11
+        Note: Product is a layer or unit to define or manage rules of trading, clearing and settlement, instrument creating, calculating statistics, etc. 
+          Product ID is assigned to Product ID created by combination of exchange, market, security group, underlying asset and currency List of Products (ID and description) will be defined later.
+          List of Products (ID and description) will be defined later.
+
+          ▦▦ List of Products ▦▦   
+          ■ HOSE  ■   
+          S1STOST  : Stock
+          S1STOMF : Mutual Fund
+          S1STOEF  : Exchange Traded Fund
+          S1STOEW : Covered Warrant
+          B1BDOBS : Corporate Bond
+          R1RPOBS : Bond Repo
+          ■ HNX  ■ 
+          S1STXST  : Stock
+          S1STXMF : Mutual Fund
+          S1STXEF  : Exchange Traded Fund
+          S1STXSR  : Subscription Rights
+          S1STXDR : Depositary Receipt
+          S1UPXST : UpCom Stock
+          S1UPXEF : UpCom Exchange Traded Fund
+          S1UPXSR : UpCom Subscription Rights
+          B1BDXBG : Government Bond
+          B1HCXBS : HNX Corporate Bond
+          D1DVXFUVN3 : VN30 Index Futures
+          D1DVXFUB05 : 5-year Government Bond Futures
+          D1DVXFUB10 : 10-year Government Bond Futures
+      -->
+    <Field Tag="20009" Name="ProductId" DataField="PRODUCT_ID"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: Indicates Product Group ID which is defined in the trading system. Product Group is a group of Products that share the trading schedule. 
+          STO : Stock Market Product Group 
+          BDO : Bond Market Product Group 
+          RPO : Repo Market Prodcut Group 
+          STX : Listed Stock Market Product Group 
+          UPX : UPCOM Product Group
+          BDX : Government Bond Product Group 
+          FIO : Index Future Product Group 
+          FBX : Bond Future Product Group 
+          HCX : Corporate Bond Product Group
+      -->
+    <Field Tag="20003" Name="ProductGrpId" DataField="PRODUCT_GRP_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Security group ID (Stock, Investment Trust, Futures, Option, etc.) ST: Stock DR: Deposit Receipt FS: Foreign Stock MF: Mutual Fund EF: ETF (Exchange Traded Fund) BC: Beneficiary Certificate SW: Subscription Warrant SR: Subscription Right EW: ELW (Equity Linked Warrant. a.k.a. Covered Warrant) BG: Government Bonds BT: Treasury Bill BS: Corporate Bonds FU: Futures OP: Option
+      -->
+    <Field Tag="30604" Name="SecurityGroupId" DataField="SECURITY_GROUP_ID"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Rights type code of derivatives
+              P = Put
+              C = Call              
+      -->
+    <Field Tag="201" Name="PutOrCall" DataField="PUT_OR_CALL"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Rights exercise type code of a derivatives
+              A: American-style
+              E: European-style
+              B: Bermuda-style
+              Z: Etc
+      -->
+    <Field Tag="1194" Name="ExerciseStyle" DataField="EXERCISE_STYLE"/>
+    <!--
+        Required: Y
+        Length: 6
+        Note: Expiration or maturity month (YYYYMM)
+      -->
+    <Field Tag="200" Name="MaturityMonthYear"  Type="Date" DateFormat="yyyyMM" DataField="MATURITY_MONTH_YEAR"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Expiration or maturity date YYYYMMDD
+      -->
+    <Field Tag="541" Name="MaturityDate"  Type="Date" DateFormat="yyyyMMdd"  DataField="MATURITY_DATE"/>
+    <!--
+        Required: Y
+        Length: 10
+        Note: Issuer's unique ID
+      -->
+    <Field Tag="106" Name="Issuer"  DataField="ISSUER"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Issued date YYYYMMDD
+      -->
+    <Field Tag="225" Name="IssueDate"  Type="Date" DateFormat="yyyyMMdd"  DataField="ISSUE_DATE"/>
+    <!--
+        Required: Y
+        Length: 22(12.8)
+        Note: Trading multiplier for calculating trading or settlement amount
+      -->
+    <Field Tag="231" Name="ContractMultiplier" Type="Double"   DataField="CONTRACT_MULTIPLIER"/>
+    <!--
+        Required: Y
+        Length: 14(7.5)
+        Note: Rate of return of a bond. Coupon Rate = Annual Interest Payments / Par Value
+      -->
+    <Field Tag="223" Name="CouponRate" Type="Double"   DataField="COUPON_RATE"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: Currency code on ISO 4217
+          VND: Vietnamese Dong 
+          USD: US Dollar 
+          EUR: Euro
+      -->
+    <Field Tag="15" Name="Currency"   DataField="CURRENCY"/>
+    <!--
+        Required: N
+        Length: 16
+        Note: Number of listed stocks
+      -->
+    <Field Tag="20020" Name="ListedShares" Type="Int"   DataField="LISTED_SHARES"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Available high limit price for the tradig day
+      -->
+    <Field Tag="1149" Name="HighLimitPx"  Type="Double"   DataField="HIGH_LIMIT_PX"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Available low limit price for the tradig day
+      -->
+    <Field Tag="1148" Name="LowLimitPx"  Type="Double"   DataField="LOW_LIMIT_PX"/>
+    <!--
+        Required: Y
+        Length: 18(9.8)
+        Note: Exercise (strike) price of options or Subscription Warrant
+      -->
+    <Field Tag="202" Name="StrikePx"  Type="Double"   DataField="STRIKE_PX"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Whether trading halt or not
+				Y = Halt
+				N = Not Halt
+      -->
+    <Field Tag="965" Name="SecurityStatus"   DataField="SECURITY_STATUS"/>
+    <!--
+        Required: Y
+        Length: 21(12.8)
+        Note: Contract size is defined as Base unit quantity of trading objects(in case of Derivatives, underlying assets) per unit trade or contract. For example, one stock, ten US Doller of bond, one US Dollar of currency and ten kg of gold.
+      -->
+    <Field Tag="30631" Name="ContractSize" Type="Double"  DataField="CONTRACT_SIZE"/>
+    <!--
+        Required: N
+        Length: 1
+        Note: The final settlement method
+              C: Cash
+              D: Physical Delivery
+              A: Cash + Physical Delivery
+              O: None
+      -->
+    <Field Tag="1193" Name="SettlMethod" DataField="SETTL_METHOD"/>
+    <!--
+        Required: N
+        Length: 13(5.6)
+        Note: Yield to maturity based on Reference Price
+      -->
+    <Field Tag="236" Name="Yield" Type="Double"  DataField="YIELD"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Reference price of a given instrument. Price limit is determined based on this price
+      -->
+    <Field Tag="20013" Name="RefPx" Type="Double"  DataField="REF_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Valuation price for a 'Re-Valuation' instrument. For such instrument, price limit is set based on this price until the first execution. Once the first execution is occurred, price limit is set again base on the price of the first execution.
+      -->
+    <Field Tag="20014" Name="EvaluationPx" Type="Double"  DataField="EVALUATION_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Upper price limit for a 'Re-Valuation' instrument during the opening call auction (or until the first execution).
+      -->
+    <Field Tag="20015" Name="HgstOrderPx" Type="Double"  DataField="HGST_ORDER_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Lower price limit for a 'Re-Valuation' instrument during the opening call auction (or until the first execution).
+      -->
+    <Field Tag="20016" Name="LwstOrderPx" Type="Double"  DataField="LWST_ORDER_PX"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Prev Close Px
+      -->
+    <Field Tag="140" Name="PrevClosePx" Type="Double"  DataField="PREV_CLOSE_PX"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Type of closing price 1: Actual Trade 2: Biased Quotation 3: No Trade 4: Biased Quotation of an Re-Valuation Instr.
+      -->
+    <Field Tag="20027" Name="SymbolCloseInfoPxType"   DataField="SYMBOL_CLOSE_INFO_PX_TYPE"/>
+    <!--
+        Required: N
+        Length: 8
+        Note: First trading date YYYYMMDD
+      -->
+    <Field Tag="30642" Name="FirstTradingDate" Type="Date" DateFormat="yyyyMMdd" DataField="FIRST_TRADE_DATE"/>
+    <!--
+        Required: N
+        Length: 8
+        Note: Last trading date YYYYMMDD
+      -->
+    <Field Tag="30511" Name="FinalTradeDate" Type="Date" DateFormat="yyyyMMdd" DataField="FINAL_TRADE_DATE"/>
+    <!--
+        Required: N
+        Length: 8
+        Note: Last settlement date YYYYMMDD
+      -->
+    <Field Tag="30512" Name="FinalSettleDate" Type="Date" DateFormat="yyyyMMdd" DataField="FINAL_SETTLE_DATE"/>
+    <!--
+        Required: N
+        Length: 8
+        Note: Listing date of a derivative product or an instrument YYYYMMDD
+      -->
+    <Field Tag="30301" Name="ListingDate" Type="Date" DateFormat="yyyyMMdd" DataField="LISTING_DATE"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Conditions for triggering random-end at the end of
+              every call auction session. In case of code '2'
+              (Conditional Triggering) the actual triggering is
+              conducted after checking if price conditions meet
+              the 'Random End Rule'
+              0: Not Trigger
+              1: Unconditional Trigger
+              2: Conditional Trigger
+      -->
+    <Field Tag="30614" Name="RandomEndCode" DataField="RANDOM_END_CODE"/>
+    <!--
+        Required: N
+        Length: 2
+        Note: Corporate action type that may affect reference price. 00: N/A 01: Stock Dividend/Bonus (D/B) 02: Cash Dividend 04: Right Offering (RO) 03: Stock D/B + Cash D 05: RO + Stock D/B 06: RO + Cash D 07: RO + Stock D/B + Cash D 08: Convertible Bond 16: Treasury Stock Div. P1: Stock Split P2: Stock Merge XX: Etc.
+      -->
+    <Field Tag="20018" Name="ExClassType" DataField="EX_CLASS_TYPE"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Volume Weighted Average Price
+      -->
+    <Field Tag="30625" Name="VWAP" Type="Double"  DataField="VWAP"/>
+    <!--
+        Required: N
+        Length: 3
+        Note: Codes to identify administrative status of a symbol due to breaching exchange regulation about public disclosure, fair trade and so on NRM: Normal WID: Warning (Information Disclosure) WFR: Warning (Financial Report) WOV: Warning (Other Violations) CTR: Controlled C&R: Controlled & Restricted RES: Restricted
+      -->
+    <Field Tag="30635" Name="SymbolAdminStatusCode" DataField="SYMBOL_ADMIN_STATUS_CODE"/>
+    <!--
+        Required: N
+        Length: 3
+        Note: Codes to identify trading method type of a specific symbol
+				NRM: Normal
+				SNE: Special Trading for Non-Execution
+				SLS: Special Trading after Long Suspension
+				NWN: New Listing with Normal Price Limit
+				NWE: New Listing with Exceptional Price Limit
+      -->
+    <Field Tag="30636" Name="TradingMethodStatus" DataField="TRADING_METHOD_STATUS"/>
+    <!--
+        Required: N
+        Length: 3
+        Note: Codes to classify status of trading sanction such as halt (or suspension), trading forbidden for some reasons NRM: Normal DTL: Delisted for Transfer List SUS: Suspension TFR: Trading Forbidden for Restricted
+      -->
+    <Field Tag="30637" Name="TradingSantionStatus" DataField="TRADING_SANTION_STATUS"/>
+    <!--
+        Required: N
+        Length: 2
+        Note: Market segment code to classify instruments by such as credit, trading volume, market capitalization and so on
+        Codes P: Premier S: Standard A: Alternative
+      -->
+    <Field Tag="30647" Name="SectorTypeCode" DataField="SECTOR_TYPE_CODE"/>
+    <!--
+        Required: N
+        Length: 8
+        Note: Redumption date YYYYMMDD
+      -->
+    <Field Tag="30652" Name="RedumptionDate" Type="Date" DateFormat="yyyyMMdd" DataField="REDUMPTION_DATE"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="SecurityStatus" MsgType="f" Direction="In" IsApplication="True" TableName="INF_SECURITY_STATUS" ArchiveFunction="mdds_pkg.archive_security_status">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: "ID for identifying the set of the same TSC(Trading Schedule Control) target products.
+              A logical unit controlled by the same schedule.
+              ▦▦ IDs ▦▦
+              STO : HoSE Stock
+              BDO : HoSE Bond
+              RPO : HoSE Repo
+              BDX : Government Bond
+              FIO : HoSE Index Futures
+              FBX : HNX Bond Futures
+              STX : HNX Stock
+              UPX : HNX UpCom
+              HCX : HNX Corporate Bond
+              ALL : All TSC Products Group"
+    -->
+    <Field Tag="30648" Name="TscProdGrpId" DataField="TSC_PROD_GRP_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: Indicates Board event ID which is defined in the trading system. Trading schedule is essentially a sequence (list) of Board events, and each event is identified by three-character code or ID. Below is an example trading schedule and its Board AA1: Opening CA Open AB1: Cont.A Open AB2: Board Trading Close AC2: Closing CA Execution AD1: Order Reception Start AD2: CA Excecution AE1: Market Halt Release AE8: Market Halt AF1: CA Open after CB AF6: CB Notice AF7: CB Notice Clear AF8: Suspension by CB AQ3: Interface Connection Cut-off AT6: PLE Notice AW8: Lunch Break AW9: Open after Lunch Break AX1: Board Start BB1: Cont.A Open for Non-PCA Instr. BC1: Closing CA Open BE9: Cont.A Open after Market Halt BF9: Cont.A Open after CB CC1: Closing PCA Open CD1: PCA Open CD3: PCA Execution DB2: Trading Close for LTD Instr. DC2: Closing CA Execution for LTD Instr. EI1: Trading Halt Release by Instr./Product EI8: Instr./Product Halt EI9: Cont.A Open after Instr./Product Halt GT1: GT Order Load
+      -->
+    <Field Tag="20005" Name="BoardEvtID" DataField="BOARD_EVT_ID"/>
+    <!--
+        Required: N
+        Length: 2
+        Note: Session/Board start & end code
+              BS : Board Start
+              BE : Board End
+              SS : Session Start
+              SE : Session End
+              SH : Session Halt
+              SR : Session Restart
+      -->
+    <Field Tag="20008" Name="SessOpenCloseCode" DataField="SESS_OPEN_CLOSE_CODE"/>
+    <!--
+        Required: N
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: N
+        Length: 2
+        Note: Code value of trading session
+              0 = Pre-opening
+              10 = Opening Auciton
+              11 = Opening Auction (Extended)
+              20 = Continuous Shifted Auction
+              21 = Continuous Shifter Auction (Extended0
+              30 = Closing Auction
+              40 = Connection
+              50 = VI Auction
+              51 = VI Auction (Extended)
+              60 = Closing price reception after closing
+              80 = Periodic Auction
+              90 = Trading Halt
+              99 = Market Closing
+      -->
+    <Field Tag="336" Name="TradingSessionId" DataField="TRADING_SESSION_ID"/>
+    <!--
+        Required: N
+        Length: 3
+        Note: "Halt Reason Code
+          ▦▦ Codes ▦▦
+          B10 The result of the inquiry disclosure for rumor and news
+          B11 Unsubmission of annual/half-yearly/quarterly report
+          B21 Capital is less than 10 billion VND
+          B23 Auditor's Opinion is adverse or disclaimer
+          B24 Issuers default
+          B25 Dissolution
+          B26 Bankruptcy
+          B27 Sanction on Business
+          B28 Suspension by courts decision
+          B29 False information/omission of listing document
+          B30 Accounting standards of violation
+          B31 Investor warning/protection
+          B40 Issues for administration
+          B60 Falsification of securities
+          B70 Investor protection during a workout program
+          B80 Bankruptcy of guarantee institution
+          B90 Other reasons
+          B99 When maturity date will be a holiday
+          D11 Corresponded cash market stop trading
+          D21 Investor warning/protection
+          D22 Volatile price movement
+          D23 Bankruptcy
+          D24 Issuers default
+          D25 Liquidation
+          D26 Sanction on Business
+          D27 Suspension by courts decision
+          D28 Stock split or reverse stock split
+          D31 HNX trading system have problem
+          D32 Lot of HNX’s members have problem
+          D33 VSD have problem
+          D41 Requested by SSC
+          O01 Volatile price movement
+          O02 Information Disclosure Special Warning
+          O03 Stock split or reverse stock split
+          O04 Bond Converting
+          O05 Capital Decrease
+          O06 Investor warning/protection
+          O07 Other reasons
+          O08 Volatile price movement
+          O09 Investor warning/protection
+          O10 Other reasons
+          O12 Volatile price movement (Intraday)
+          O13 Investor warning/protection (Intraday)
+          O14 Other reasons (Intraday)
+          X01 Volatile price movement
+          X02 Information Disclosure Special Warning
+          X03 Stock split or reverse stock split
+          X04 Bond Converting
+          X05 Capital Decrease
+          X06 Investor warning/protection
+          X07 Other reasons
+          X08 Violation on information disclosure
+          X09 Volatile volume movement
+          X10 Fault to fix controlled status
+          X11 Continue to violate information disclosure when controlled
+          X12 Volatile volume movement (Intraday)
+          X13 Investor warning/protection (Intraday)
+          X14 Other reasons (Intraday)"
+      -->
+    <Field Tag="30651" Name="HaltRsnCode" DataField="HALT_RSN_CODE"/>
+    <!--
+        Required: N
+        Length: 11
+        Note: Product is a layer or unit to define or manage rules of trading, clearing and settlement, instrument creating, calculating statistics, etc. Product ID is assigned to Product ID created by combination of exchange, market, security group, underlying asset and currency
+        List of Products (ID and description) will be defined later.
+
+        ▦▦ List of Products ▦▦   
+        ■ HOSE  ■   
+        S1STOST  : Stock
+        S1STOMF : Mutual Fund
+        S1STOEF  : Exchange Traded Fund
+        S1STOEW : Covered Warrant
+        B1BDOBS : Corporate Bond
+        R1RPOBS : Bond Repo
+        ■ HNX  ■ 
+        S1STXST  : Stock
+        S1STXMF : Mutual Fund
+        S1STXEF  : Exchange Traded Fund
+        S1STXSR  : Subscription Rights
+        S1STXDR : Depositary Receipt
+        S1UPXST : UpCom Stock
+        S1UPXEF : UpCom Exchange Traded Fund
+        S1UPXSR : UpCom Subscription Rights
+        B1BDXBG : Government Bond
+        B1HCXBS : HNX Corporate Bond
+        D1DVXFUVN3 : VN30 Index Futures
+        D1DVXFUB05 : 5-year Government Bond Futures
+        D1DVXFUB10 : 10-year Government Bond Futures
+	  -->
+    <Field Tag="20009" Name="ProductId" DataField="PRODUCT_ID"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="SecurityInformationNotification" MsgType="M7" Direction="In" IsApplication="True" TableName="INF_SECURITY_INFO_NOTIFICATION" ArchiveFunction="mdds_pkg.archive_security_info_ntf">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>HoChiMinh Stock Exchange
+			Interface Specification for Market Data Distribution System 15
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Reference price which is the basis for trading such as calculating upper/lower limit prices
+      -->
+    <Field Tag="20013" Name="ReferencePx" Type="Double" DataField="REFERENCE_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Available high limit price for the tradig day
+      -->
+    <Field Tag="1149" Name="HighLimitPx" Type="Double" DataField="HIGH_LIMIT_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Available low limit price for the tradig day
+      -->
+    <Field Tag="1148" Name="LowLimitPx" Type="Double" DataField="LOW_LIMIT_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Valuation price for a 'Re-Valuation' instrument. For such instrument, price limit is set based on this price until the first execution. Once the first execution is occurred, price limit is set again base on the price of the first execution.
+      -->
+    <Field Tag="20014" Name="EvaluationPrice" Type="Double" DataField="EVALUATION_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Upper price limit for a 'Re-Valuation' instrument during the opening call auction (or until the first execution).
+      -->
+    <Field Tag="20015" Name="HgstOrderPrice" Type="Double" DataField="HGST_ORDER_PX"/>
+    <!--
+        Required: N
+        Length: 15(9.4)
+        Note: Lower price limit for a 'Re-Valuation' instrument during the opening call auction (or until the first execution).
+      -->
+    <Field Tag="20016" Name="LwstOrderPrice" Type="Double" DataField="LWST_ORDER_PX"/>
+    <!--
+        Required: N
+        Length: 16
+        Note: Number of listed stocks
+      -->
+    <Field Tag="20020" Name="ListedShares" Type="Int" DataField="LISTED_SHARES"/>
+    <!--
+        Required: N
+        Length: 2
+        Note: Corporate action type that may affect reference price. 
+              00: N/A 
+              01: Stock Dividend/Bonus (D/B) 
+              02: Cash Dividend 04: Right Offering (RO) 
+              03: Stock D/B + Cash D 
+              05: RO + Stock D/B 
+              06: RO + Cash D 
+              07: RO + Stock D/B + Cash D 
+              08: Convertible Bond 
+              16: Treasury Stock Div. 
+              P1: Stock Split 
+              P2: Stock Merge XX: Etc.
+      -->
+    <Field Tag="20018" Name="ExClassType"  DataField="EX_CLASS_TYPE"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="SymbolClosingInformation" MsgType="M8" Direction="In" IsApplication="True" TableName="INF_SYMBOL_CLOSING_INFORMATION" ArchiveFunction="mdds_pkg.archive_symbol_closing_inf">
+    <!--
+        Required: Y
+        Length: 3
+        Note: IID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: The last execution price of that day. If there is no execution it is replaced with the reference price, and if no reference price is given then it will be 0 (zero)
+	-->
+    <Field Tag="20026" Name="SymbolCloseInfoPx"  Type="Double" DataField="SYMBOL_CLOSE_INFO_PX"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Final yield of a bond calculated using the closing price of that day
+      -->
+    <Field Tag="30541" Name="SymbolCloseInfoYield" Type="Double" DataField="SYMBOL_CLOSE_INFO_YIELD"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Type of closing price 1: Actual Trade 2: Biased Quotation 3: No Trade 4: Biased Quotation of an Re-Valuation Instr.
+      -->
+    <Field Tag="20027" Name="SymblCloseInfoPxType" DataField="SYMBL_CLOSE_INFO_PX_TYPE"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="VolatilityInterruption" MsgType="MD" Direction="In" IsApplication="True" TableName="INF_VOLATILITY_INTERRUPTION" ArchiveFunction="mdds_pkg.archive_volatility_int">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--update v1.3 - 20190911 -->
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+	-->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: VI apply classification code
+              1 = Activated
+              2 = Released
+      -->
+    <Field Tag="20030" Name="VITypeCode" DataField="VI_TYPE_CODE"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: VI kind code
+              1 = Static VI
+              2 = Dynamic VI
+              3 = Static VI + Dynamic VI
+      -->
+    <Field Tag="20031" Name="VIKindCode" DataField="VI_KIND_CODE"/>
+    <!--
+        Required: Y
+        Length: 15 (9.4)
+        Note: Indicates static VI reference price. Price range for static VI is determined based on this price, and static VI is activated when an order is about to be executed outside the VI price range.
+      -->
+    <Field Tag="20032" Name="StaticVIBasePx"  Type="Double" DataField="STATIC_VI_BASE_PX"/>
+    <!--
+        Required: Y
+        Length: 15 (9.4)
+        Note: Indicates dynamic VI reference price. Price range for dynamic VI is determined based on this price, and dynamic VI is activated when an order is about to be executed outside the VI price range.
+      -->
+    <Field Tag="20047" Name="DynamicVIBasePrice"  Type="Double" DataField="DYNAMIC_VI_BASE_PRICE"/>
+    <!--
+        Required: Y
+        Length: 15 (9.4)
+        Note: VI Triggering Px
+		-->
+    <Field Tag="20033" Name="VIPx" Type="Double"  DataField="VI_PX"/>
+    <!--
+        Required: Y
+        Length: 8(3.3)
+        Note: Indicates static VI activation ratio expressed in percent. static VI price range is defined as range from static VI reference price plus/minus this ratio. For example, if static VI reference price is 1000 and this ratio is 2.5, then static VI price range.
+      -->
+    <Field Tag="20034" Name="StaticVIDispartiyRatio" Type="Double"  DataField="STATIC_VI_DISPARTIY_RATIO"/>
+    <!--
+        Required: Y
+        Length: 8(3.3)
+        Note: Indicates dynamic VI activation ratio expressed in percent. Dynamic VI price range is defined as range from Dynamic VI reference price plus/minus this ratio. For example, if Dynamic VI reference price is 1000 and this ratio is 2, then Dynamic VI price range is from 980 to 1020.
+      -->
+    <Field Tag="20048" Name="DynamicVIDispartiyRatio" Type="Double"  DataField="DYNAMIC_VI_DISPARTIY_RATIO"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="MarketMakerInformation" MsgType="MH" Direction="In" IsApplication="True" TableName="INF_MARKET_MAKER_INFORMATION" ArchiveFunction="mdds_pkg.archive_market_maker_inf">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Unit of agreement objects for market making 1) Stock/Bond Market: Instrument ISIN code 2) Derivatives Market: Product ID
+      -->
+    <Field Tag="30574" Name="MarketMakerContractCode" DataField="MARKET_MAKER_CONTRACT_CODE"/>
+    <!--
+        Required: Y
+        Length: 5
+        Note: ID to identify or distinguish market participants or members with 5-digit numeric characters
+      -->
+    <Field Tag="20023" Name="MemberNo" DataField="MEMBER_NO"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="SymbolEvent" MsgType="MI" Direction="In" IsApplication="True" TableName="INF_SYMBOL_EVENT" ArchiveFunction="mdds_pkg.archive_symbol_event">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+	-->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Event code for such as trading halt, low liquidation and so forth. Code '91' (Trading Halt for Repo) is only used in Gateway Repo trading system, not the Terminal Repo trading system: 01: Trading Halt 04: Liquidation Trading 91: Trading Halt for Repo
+      -->
+    <Field Tag="30575" Name="EventKindCode" DataField="EVENT_KIND_CODE"/>
+    <!--
+        Required: Y
+        Length: 4
+        Note: Reason for designating a specific event (trading halt, administrative instrument, etc.) to an instrument or a product
+        ▦▦ Codes ▦▦
+        ■ Trading Halt 
+        B10 The result of the inquiry disclosure for rumor and news
+        B11 Unsubmission of annual/half-yearly/quarterly report
+        B21 Capital is less than 10 billion VND
+        B23 Auditor's Opinion is adverse or disclaimer
+        B24 Issuers default
+        B25 Dissolution
+        B26 Bankruptcy
+        B27 Sanction on Business
+        B28 Suspension by courts decision
+        B29 False information/omission of listing document
+        B30 Accounting standards of violation
+        B31 Investor warning/protection
+        B40 Issues for administration
+        B60 Falsification of securities
+        B70 Investor protection during a workout program
+        B80 Bankruptcy of guarantee institution
+        B90 Other reasons
+        B99 When maturity date will be a holiday
+        D11 Corresponded cash market stop trading
+        D21 Investor warning/protection
+        D22 Volatile price movement
+        D23 Bankruptcy
+        D24 Issuers default
+        D25 Liquidation
+        D26 Sanction on Business
+        D27 Suspension by courts decision
+        D28 Stock split or reverse stock split
+        D31 HNX trading system have problem
+        D32 Lot of HNX’s members have problem
+        D33 VSD have problem
+        D41 Requested by SSC
+        O01 Volatile price movement
+        O02 Information Disclosure Special Warning
+        O03 Stock split or reverse stock split
+        O04 Bond Converting
+        O05 Capital Decrease
+        O06 Investor warning/protection
+        O07 Other reasons
+        O08 Volatile price movement
+        O09 Investor warning/protection
+        O10 Other reasons
+        O12 Volatile price movement (Intraday)
+        O13 Investor warning/protection (Intraday)
+        O14 Other reasons (Intraday)
+        X01 Volatile price movement
+        X02 Information Disclosure Special Warning
+        X03 Stock split or reverse stock split
+        X04 Bond Converting
+        X05 Capital Decrease
+        X06 Investor warning/protection
+        X07 Other reasons
+        X08 Violation on information disclosure
+        X09 Volatile volume movement
+        X10 Fault to fix controlled status
+        X11 Continue to violate information disclosure when controlled
+        X12 Volatile volume movement (Intraday)
+        X13 Investor warning/protection (Intraday)
+        X14 Other reasons (Intraday)
+
+        ■ Liquidation Trading
+             None.
+        ■ Trading Halt for Repo
+        1 Bankruptcy
+        2 Business suspension
+        3 Company liquidation
+        4 Excessive order
+        9 Others
+      -->
+    <Field Tag="30576" Name="EventOccurrenceReasonCode" DataField="EVENT_OCCURRENCE_REASON_CODE"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Starting date of an event
+      -->
+    <Field Tag="30577" Name="EventStartDate" Type="Date" DateFormat="yyyyMMdd"  DataField="EVENT_START_DATE"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Ending date of an event
+      -->
+    <Field Tag="30578" Name="EventEndDate" Type="Date" DateFormat="yyyyMMdd"  DataField="EVENT_END_DATE"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="IndexConstituentsInfo" MsgType="ML" Direction="In" IsApplication="True" TableName="INF_INDEX_CONSTITUENTS" ArchiveFunction="mdds_pkg.archive_index_constituents">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+	-->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Market code of an index
+			1: HoSE
+			2: HNX
+			3: Composite (HoSE + HNX)
+      4. UPX
+      -->
+    <Field Tag="30569" Name="MarketIndexClass" DataField="MARKET_INDEX_CLASS"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Industry Index Code for example
+			001: Composite index
+			002: VNALLshare index
+			100: VN30 index
+      -->
+    <Field Tag="30167" Name="IndexsTypeCode" DataField="INDEXS_TYPE_CODE"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: Currency code on ISO 4217
+			VND: Vietnamese Dong
+			USD: US Dollar
+			EUR: Euro
+      -->
+    <Field Tag="15" Name="Currency" DataField="CURRENCY"/>
+    <!--
+        Required: Y
+        Length: 120
+        Note: Index Name
+      -->
+    <Field Tag="30632" Name="IdxName" DataField="IDX_NAME"/>
+    <!--
+        Required: Y
+        Length: 80
+        Note: Index English Name
+      -->
+    <Field Tag="30633" Name="IdxEnglishName" DataField="IDX_ENGLISH_NAME"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: 1. Disclosure : Total message number of messages for a discosure when the length of text is over the size
+			2. Index Constituents Information : Total number of contituents for an index
+      -->
+    <Field Tag="30606" Name="TotalMsgNo" Type="Int"  DataField="TOTAL_MSG_NO"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: 1. Disclosure : Current message number of messages for a disclosure when the length of text is over the size
+			2. Index Constituents Information : Current sequence number of contituents for an index
+      -->
+    <Field Tag="30607" Name="CurrentMsgNo" Type="Int"  DataField="CURRENT_MSG_NO"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="RandomEnd" MsgType="MW" Direction="In" IsApplication="True" TableName="INF_RANDOM_END" ArchiveFunction="mdds_pkg.archive_random_end">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation HHmmSSsss
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff"  TimeZoneEffected="True" DataField="TRANSACT_TIME"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Value of type code for applying or releasing random end
+              1: Opening call auction session RE set
+              2: Opening call auction session RE release
+              3: Closing single price auction session RE set
+              4: Closing single price auction session RE release
+              5: Post-market off-hour RE set
+              6: Post-market off-hour RE release
+      -->
+    <Field Tag="30615" Name="RandEndApplyClass" DataField="RAND_END_APPLY_CLASS"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Tentative price of the execution in when the random end is applied the call auction
+      -->
+    <Field Tag="30616" Name="RandEndExecPx" Type="Double"  DataField="RAND_END_EXEC_PX"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Estimated highest price in the call auction when the random end is applie
+      -->
+    <Field Tag="30617" Name="RandEndHighestPx" Type="Double"  DataField="RAND_END_HIGHEST_PX"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Disparate ration between estimated the highest price and tentative price in a call auction
+      -->
+    <Field Tag="30618" Name="RandEndHighestPxRatio" Type="Double"  DataField="RAND_END_HIGHEST_PX_RATIO"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Estimated lowest price in the call auction when the random end is applied
+      -->
+    <Field Tag="30619" Name="RandEndLowestPx" Type="Double"  DataField="RAND_END_LOWEST_PX"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Disparate ration between estimated the lowest price and tentative price in a call auction
+      -->
+    <Field Tag="30620" Name="RandEndLowestPxRatio" Type="Double"  DataField="RAND_END_LOWEST_PX_RATIO"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Px of the latest execution before the call auction
+      -->
+    <Field Tag="30621" Name="LatestPx" Type="Double"  DataField="LATEST_PX"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Disparate ration between the latest execution price and tentative price in a call auctio
+      -->
+    <Field Tag="30622" Name="LatestPxRatio" Type="Double"  DataField="LATEST_PX_RATIO"/>
+    <!--
+        Required: N
+        Length: 9
+        Note: Time of releasing the random end HHmmSSsss
+      -->
+    <Field Tag="30623" Name="RandEndReleaseTime" Type="Date" DateFormat="HHmmssfff"  TimeZoneEffected="True" DataField="RAND_END_RELEASE_TIME"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="Px" MsgType="X" Direction="In" IsApplication="True" ArchiverId = "1" TableName="INF_PX" ArchiveFunction="mdds_pkg.archive_px">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+		<Hochiminh Exchange>
+		- STO: HoSE Stock Market
+		- BDO: HoSE Bond Market
+		- RPO: HoSE Repo Market
+		<Hanoi Exchange>
+		- STX: HNX Listed Stock Market
+		- BDX: HNX Government Bond Market
+		- DVX: HNX Derivative Market
+		- UPX: HNX UpCoM Stock Market
+		- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID" ToLoop="True"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID" ToLoop="True"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Code value of trading session
+              0 = Pre-opening
+              10 = Opening Auciton
+              11 = Opening Auction (Extended)
+              20 = Continuous Shifted Auction
+              21 = Continuous Shifter Auction (Extended0
+              30 = Closing Auction
+              40 = Connection
+              50 = VI Auction
+              51 = VI Auction (Extended)
+              60 = Closing price reception after closing
+              80 = Periodic Auction
+              90 = Trading Halt
+              99 = Market Closing
+      -->
+    <Field Tag="336" Name="TradingSessionId" DataField="TRADING_SESSION_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL" ToLoop="True"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Indicates local date of trade refereneced in this message in YYYYMMDD format. Absence this field indicates current day.
+      -->
+    <Field Tag="75" Name="TradeDate" Type="Date" DateFormat="yyyyMMdd" DataField="TRADE_DATE"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True"  DataField="TRANSACT_TIME" ToLoop="True"/>
+    <!--
+        Required: N
+        Length: 12
+        Note: Total volume traded
+      -->
+    <Field Tag="387" Name="TotalVolumeTraded" Type="Int" DataField="TOTAL_VOLUME_TRADED"/>
+    <!--
+        Required: N
+        Length: 23(18.4)
+        Note: Gross amount traded
+      -->
+    <Field Tag="381" Name="GrossTradeAmt" Type="Double" DataField="GROSS_TRADE_AMT"/>
+    <!--
+        Required: N
+        Length: 12
+        Note: Total quantity of remaining orders in ask side
+      -->
+    <Field Tag="30521" Name="SellTotQuoteQty" Type="Int"  DataField="SELL_TOT_QUOTE_QTY"/>
+    <!--
+        Required: N
+        Length: 12
+        Note: Total quantity of remaining orders in bid side
+      -->
+    <Field Tag="30522" Name="BuyTotQuoteQty" Type="Int" DataField="BUY_TOT_QUOTE_QTY"/>
+    <!--
+        Required: N
+        Length: 11
+        Note: Valid count of orders in ask side
+      -->
+    <Field Tag="30523" Name="SellValidQuoteCnt" Type="Int" DataField="SELL_VALID_QUOTE_CNT"/>
+    <!--
+        Required: N
+        Length: 11
+        Note: Valid count of orders in bid side
+      -->
+    <Field Tag="30524" Name="BuyValidQuoteCnt" Type="Int" DataField="BUY_VALID_QUOTE_CNT"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Number(Depth) of market data entries repeated as following
+      -->
+    <Field Tag="268" Name="NoMDEntries" Type="Int" DataField="NO_MD_ENTRIES"/>
+
+    <Loop Counter="NO_MD_ENTRIES">
+      <!--
+        Required: Y
+        Length: 9
+        Note: Data sequential number within repeated record
+      -->
+      <Field Tag="83" Name="RptSeq" Type="Int"  DataField="RPT_SEQ"/>
+      <!--
+        Required: Y
+        Length: 1
+        Note: Type code of update action for an entry of market data
+			        0 = New
+      -->
+      <Field Tag="279" Name="MDUpdateAction" DataField="MD_UPDATE_ACTION"/>
+      <!--
+        Required: Y
+        Length: 1
+        Note: Data classification for an entry of market data
+              Possible values in message X (Price) .
+              0 = Bid
+              1 = Offer
+              2 = Trade
+              4 = Opening Px
+              7 = Trading Session High Px
+              8 = Trading Session Low Px
+              
+              Possible values in message W (Price Recovery) .
+              0 = Bid 
+              1 = Offer
+      -->
+      <Field Tag="269" Name="MDEntryType" DataField="MD_ENTRY_TYPE"/>
+      <!--
+        Required: Y
+        Length: 2
+        Note: Position no (or level) for an entry of market data
+      -->
+      <Field Tag="290" Name="MDEntryPositionNo" Type="Int"  DataField="MD_ENTRY_POSITION_NO"/>
+      <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Px for an entry of market data
+      -->
+      <Field Tag="270" Name="MDEntryPx" Type="Double"  DataField="MD_ENTRY_PX"/>
+      <!--
+        Required: Y
+        Length: 12
+        Note: Size (or quantity) for an entry of market data
+      -->
+      <Field Tag="271" Name="MDEntrySize" Type="Int"  DataField="MD_ENTRY_SIZE"/>
+      <!--
+        Required: N
+        Length: 11
+        Note: Number of orders
+      -->
+      <Field Tag="346" Name="NumberOfOrders" Type="Int"  DataField="NUMBER_OF_ORDERS"/>
+      <!--
+        Required: N
+        Length: 13(5.6)
+        Note: Yield of the entry. Bond market only
+      -->
+      <Field Tag="30270" Name="MDEntryYield" Type="Double"  DataField="MD_ENTRY_YIELD"/>
+      <!--
+        Required: N
+        Length: 12
+        Note: Size of the entry provided from market makers
+      -->
+      <Field Tag="30271" Name="MDEntryMMSize" Type="Int"  DataField="MD_ENTRY_MM_SIZE"/>
+    </Loop>
+  </Msg>
+  <!--Checked against 0.9A22 20240327: Stock, Bond-->
+  <Msg Name="PxRecovery" MsgType="W" Direction="In" IsApplication="True" ArchiverId = "2" TableName="INF_PX_RECOVERY" ArchiveFunction="mdds_pkg.archive_px_recovery">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID" ToLoop="True"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			Interface Specification for Market Data Distribution System 23
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID" ToLoop="True"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Code value of trading session
+              0 = Pre-opening
+              10 = Opening Auciton
+              11 = Opening Auction (Extended)
+              20 = Continuous Shifted Auction
+              21 = Continuous Shifter Auction (Extended0
+              30 = Closing Auction
+              40 = Connection
+              50 = VI Auction
+              51 = VI Auction (Extended)
+              60 = Closing price reception after closing
+              80 = Periodic Auction
+              90 = Trading Halt
+              99 = Market Closing
+      -->
+    <Field Tag="336" Name="TradingSessionId" DataField="TRADING_SESSION_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL" ToLoop="True"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: The first price during that day
+      -->
+    <Field Tag="30561" Name="OpnPx" Type="Double"  DataField="OPN_PX"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Highest price during that day
+      -->
+    <Field Tag="30562" Name="HighPx" Type="Double"  DataField="HIGH_PX"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Lowest price during that day
+      -->
+    <Field Tag="30563" Name="LowPx" Type="Double"  DataField="LOW_PX"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: The last execution price of that day. If there is no execution it is replaced with the reference price, and if no reference price is given then it will be 0 (zero)
+      -->
+    <Field Tag="20026" Name="SymbolCloseInfoPx" Type="Double"  DataField="SYMBOL_CLOSE_INFO_PX"/>
+    <!--Bond-->
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Yield rate for opening price
+      -->
+    <Field Tag="30565" Name="OpnPxYld" Type="Double"  DataField="OPN_PX_YLD"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Yield rate for high price
+      -->
+    <Field Tag="30566" Name="HighPxYld" Type="Double"  DataField="HIGH_PX_YLD"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Yield rate for low price
+      -->
+    <Field Tag="30567" Name="LowPxYld" Type="Double"  DataField="LOW_PX_YLD"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Final yield of a bond calculated using the closing price of that day
+      -->
+    <Field Tag="30568" Name="ClsPxYld" Type="Double"  DataField="CLS_PX_YLD"/>
+    <!--End Bond-->
+    <!--
+        Required: Y
+        Length: 12
+        Note: Total volume traded
+      -->
+    <Field Tag="387" Name="TotalVolumeTraded" Type="Int"  DataField="TOTAL_VOLUME_TRADED"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Gross amount traded
+      -->
+    <Field Tag="381" Name="GrossTradeAmt" Type="Double"  DataField="GROSS_TRADE_AMT"/>
+    <!--
+        Required: N
+        Length: 12
+        Note: Total quantity of remaining orders in ask side
+      -->
+    <Field Tag="30521" Name="SellTotOrderQty" Type="Int" DataField="SELL_TOT_ORDER_QTY"/>
+    <!--
+        Required: N
+        Length: 12
+        Note: Total quantity of remaining orders in bid side
+      -->
+    <Field Tag="30522" Name="BuyTotOrderQty" Type="Int" DataField="BUY_TOT_ORDER_QTY"/>
+    <!--
+        Required: N
+        Length: 11
+        Note: Valid count of orders in ask side
+      -->
+    <Field Tag="30523" Name="SellValidOrderCnt" Type="Int" DataField="SELL_VALID_ORDER_CNT"/>
+    <!--
+        Required: N
+        Length: 11
+        Note: Valid count of orders in bid side
+      -->
+    <Field Tag="30524" Name="BuyValidOrderCnt" Type="Int" DataField="BUY_VALID_ORDER_CNT"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Number(Depth) of market data entries repeated as following
+      -->
+    <Field Tag="268" Name="NoMDEntries" Type="Int"  DataField="NO_MD_ENTRIES"/>
+    <Loop  Counter="NO_MD_ENTRIES">
+      <!--
+        Required: Y
+        Length: 9
+        Note: Data sequential number within repeated record
+      -->
+      <Field Tag="83" Name="RptSeq" Type="Int"  DataField="RPT_SEQ"/>
+      <!--
+        Required: Y
+        Length: 1
+        Note: Type code of update action for an entry of market data
+              0 = New
+      -->
+      <Field Tag="279" Name="MDUpdateAction" DataField="MD_UPDATE_ACTION"/>
+      <!--
+        Required: Y
+        Length: 1
+        Note: Data classification for an entry of market data
+              Possible values in message X (Price) .
+              0 = Bid
+              1 = Offer
+              2 = Trade
+              4 = Opening Px
+              7 = Trading Session High Px
+              8 = Trading Session Low Px
+              
+              Possible values in message W (Price Recovery) .
+              0 = Bid 
+              1 = Offer 
+      -->
+      <Field Tag="269" Name="MDEntryType" DataField="MD_ENTRY_TYPE"/>
+      <!--
+        Required: Y
+        Length: 2
+        Note: Position no (or level) for an entry of market data
+      -->
+      <Field Tag="290" Name="MDEntryPositionNo" Type="Int"  DataField="MD_ENTRY_POSITION_NO"/>
+      <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Px for an entry of market data
+      -->
+      <Field Tag="270" Name="MDEntryPx" Type="Double"  DataField="MD_ENTRY_PX"/>
+      <!--
+        Required: Y
+        Length: 12
+        Note: Size (or quantity) for an entry of market data
+      -->
+      <Field Tag="271" Name="MDEntrySize" Type="Int"  DataField="MD_ENTRY_SIZE"/>
+      <!--
+        Required: N
+        Length: 11
+        Note: Number of orders
+      -->
+      <Field Tag="346" Name="NumberOfOrders" Type="Int"  DataField="NUMBER_OF_ORDERS"/>
+      <!--Bond-->
+      <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Yield of the entry. Bond market only.
+      -->
+      <Field Tag="30270" Name="MDEntryYield" Type="Double"  DataField="MD_ENTRY_YIELD"/>
+      <!--End Bond-->
+      <!--
+        Required: Y
+        Length: 12
+        Note: Size of the entry provided from market makers
+      -->
+      <Field Tag="30271" Name="MDEntryMMSize" Type="Int"  DataField="MD_ENTRY_MM_SIZE"/>
+    </Loop>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="Index" MsgType="M1" Direction="In" IsApplication="True" TableName="INF_INDEX" ArchiveFunction="mdds_pkg.archive_index">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Code value of trading session
+                0 = Pre-opening
+                10 = Opening Auciton
+                11 = Opening Auction (Extended)
+                20 = Continuous Shifted Auction
+                21 = Continuous Shifter Auction(Extended)
+                30 = Closing Auction
+                40 = Connection
+                50 = VI Auction
+                51 = VI Auction (Extended)
+                60 = Closing price reception after closing
+                80 = Periodic Auction
+                90 = Trading Halt
+                99 = Market Closing
+      -->
+    <Field Tag="336" Name="TradingSessionID" DataField="TRADING_SESSION_ID"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Market code of an index
+			1: HoSE
+			2: HNX
+			3: Composite (HoSE + HNX)
+      4: UPX
+      -->
+    <Field Tag="30569" Name="MarketIndexClass" DataField="MARKET_INDEX_CLASS"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Industry Index Code for example
+			001: Composite index
+			002: VNALLshare index
+			100: VN30 index
+      -->
+    <Field Tag="30167" Name="IndexsTypeCode" DataField="INDEXS_TYPE_CODE"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: Currency code on ISO 4217
+			VND: Vietnamese Dong
+			USD: US Dollar
+			EUR: Euro
+      -->
+    <Field Tag="15" Name="Currency" DataField="CURRENCY"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True"   DataField="TRANSACT_TIME"/>
+    <!--
+        Required: Y
+        Length: 10(6.2)
+        Note: Value of the index calculated
+      -->
+    <Field Tag="30217" Name="ValueIndexes" Type="Double"   DataField="VALUE_INDEXES"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Total volume traded
+      -->
+    <Field Tag="387" Name="TotalVolumeTraded" Type="Int"   DataField="TOTAL_VOLUME_TRADED"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Gross amount traded
+      -->
+    <Field Tag="381" Name="GrossTradeAmt" Type="Double"   DataField="GROSS_TRADE_AMT"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Accumulative trading volume of boards in continuous trading method
+      -->
+    <Field Tag="30638" Name="ContauctAccTrdvol" Type="Int"   DataField="CONTAUCT_ACC_TRDVOL"/>
+    <!--
+        Required: Y
+        Length: 23 (18.4)
+        Note: Accumulative trading value of boards in continuous trading method
+      -->
+    <Field Tag="30639" Name="ContauctAccTrdval" Type="Double"   DataField="CONTAUCT_ACC_TRDVAL"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Accumulative trading volume of boards in block trading method
+      -->
+    <Field Tag="30640" Name="BlktrdAccTrdvol" Type="Int"   DataField="BLKTRD_ACC_TRDVOL"/>
+    <!--
+        Required: Y
+        Length: 23 (18.4)
+        Note: Accumulative trading value of boards in block trading method
+      -->
+    <Field Tag="30641" Name="BlktrdAccTrdval" Type="Double"   DataField="BLKTRD_ACC_TRDVAL"/>
+    <!--
+        Required: Y
+        Length: 7
+        Note: Number of issues of which price is upper limit
+      -->
+    <Field Tag="30589" Name="FluUpperLimitCount" Type="Int"   DataField="FLU_UPPER_LIMIT_COUNT"/>
+
+    <!--
+        Required: Y
+        Length: 7
+        Note: Number of issues of which price is increasing
+      -->
+    <Field Tag="30590" Name="FluUpCount" Type="Int"   DataField="FLU_UP_COUNT"/>
+    <!--
+        Required: Y
+        Length: 7
+        Note: Number of issues of which price is not changed
+      -->
+    <Field Tag="30591" Name="FluSteadinessCount" Type="Int"   DataField="FLU_STEADINESS_COUNT"/>
+    <!--
+        Required: Y
+        Length: 7
+        Note: Number of issues of which price is decreasing
+      -->
+    <Field Tag="30592" Name="FluDownCount" Type="Int"   DataField="FLU_DOWN_COUNT"/>
+    <!--
+        Required: Y
+        Length: 7
+        Note: Number of issues of which price is lower limit
+      -->
+    <Field Tag="30593" Name="FluLowerLimitCount" Type="Int"   DataField="FLU_LOWER_LIMIT_COUNT"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Sum of trading volumes of issues of which price is incresing or upper limit
+      -->
+    <Field Tag="30594" Name="FluUpVolume" Type="Int"   DataField="FLU_UP_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Sum of trading volumes of issues of which price is decresing or lower limit
+      -->
+    <Field Tag="30595" Name="FluDownVolume" Type="Int"   DataField="FLU_DOWN_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Sum of trading volumes of issues of which price is not changed
+      -->
+    <Field Tag="30596" Name="FluSteadinessVolume" Type="Int"   DataField="FLU_STEADINESS_VOLUME"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327: Stock, Bond, Derivatives-->
+  <Msg Name="InvInd" MsgType="M2" Direction="In" IsApplication="True" TableName="INF_INV_IND" ArchiveFunction="mdds_pkg.archive_inv_ind">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True"  DataField="TRANSACT_TIME"/>
+    <!--Stock-->
+    <!--
+        Required: Y
+        Length: 1
+        Note: Market code of an index 
+        1: HoSE 
+        2: HNX 
+        3: Composite (HoSE + HNX)
+        4: UPX
+      -->
+    <Field Tag="30569" Name="MarketIndexClass" DataField="MARKET_INDEX_CLASS"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Industry Index Code 
+        for example 
+        001: Composite index 
+        002: VNALLshare index 
+        100: VN30 index
+      -->
+    <Field Tag="30167" Name="IndexsTypeCode" DataField="INDEXS_TYPE_CODE"/>
+    <!--
+        Required: Y
+        Length: 3
+        Note: Currency code on ISO 4217 
+        VND: Vietnamese Dong 
+        USD: US Dollar 
+        EUR: Euro
+      -->
+    <Field Tag="15" Name="Currency" DataField="CURRENCY"/>
+    <!--End Stock-->
+    <!--Bond-->
+    <!--
+        Required: Y
+        Length: 10
+        Note: T-bills, T-Bonds, Note of the central bank, State mortgage bonds and so on. ## If CFI has a function to classify above, this item is needless
+      -->
+    <Field Tag="30597" Name="BondClassificationCode" DataField="BOND_CLASSIFICATION_CODE"/>
+    <!--End Bond-->
+    <!--Derivatives-->
+    <!--
+        Required: Y
+        Length: 2
+        Note: Security group ID (Stock, Investment Trust, Futures, Option, etc.)
+      -->
+    <Field Tag="30604" Name="SecurityGroupId" DataField="SECURITY_GROUP_ID"/>
+    <!--End Derivatives-->
+    <!--
+        Required: Y
+        Length: 4
+        Note: This field indicates which category the owner of a given order or quote belongs to. This field is validated against AccountType field as below:
+			- If AccountType is Customer (1), any value is
+			permitted for this field.
+			- If AccountType is House (3), this field must be
+			1000.
+			1000 = Securities company
+			2000 = Insurance company
+			3000 = Asset management company and
+			Investment company
+			3200 = Fund
+			4000 = Bank
+			5000 = General finance company
+			6000 = Pension Fund
+			7000 = Goverment representation
+			7030 = International organization
+			7100 = Misc corporation
+			8000 = Indivisual
+      -->
+    <Field Tag="20000" Name="InvestCode"  DataField="INVEST_CODE"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in sell side
+      -->
+    <Field Tag="331" Name="SellVolume" Type="Int"  DataField="SELL_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Trade amount in ask side
+      -->
+    <Field Tag="30168" Name="SellTradeAmount" Type="Double"  DataField="SELL_TRADE_AMOUNT"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in buy side
+      -->
+    <Field Tag="330" Name="BuyVolume" Type="Int"  DataField="BUY_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Traded amount in bid side
+      -->
+    <Field Tag="30169" Name="BuyTradedAmount" Type="Double"  DataField="BUY_TRADED_AMOUNT"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="InvSymbol" MsgType="M3" Direction="In" IsApplication="True" TableName="INF_INV_SYMBOL" ArchiveFunction="mdds_pkg.archive_inv_symbol">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+	-->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 4
+        Note: This field indicates which category the owner of a given order or quote belongs to. This field is validated against AccountType field as below:
+			- If AccountType is Customer (1), any value is
+			permitted for this field.
+			- If AccountType is House (3), this field must be
+			1000.
+			1000 = Securities company
+			2000 = Insurance company
+			3000 = Asset management company and Investment
+			company
+			3200 = Fund
+			4000 = Bank
+			5000 = General finance company
+			6000 = Pension Fund
+			7000 = Goverment representation
+			7030 = International organization
+			7100 = Misc corporation
+			8000 = Indivisual
+      -->
+    <Field Tag="20000" Name="InvestCode"  DataField="INVEST_CODE"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in sell side
+      -->
+    <Field Tag="331" Name="SellVolume"  Type="Int"  DataField="SELL_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Trade value in ask side
+      -->
+    <Field Tag="30168" Name="SellTradeAmount"  Type="Double"  DataField="SELL_TRADE_AMOUNT"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in buy side
+      -->
+    <Field Tag="330" Name="BuyVolume" Type="Int"   DataField="BUY_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Traded value in bid side
+      -->
+    <Field Tag="30169" Name="BuyTradedAmount" Type="Double"  DataField="BUY_TRADED_AMOUNT"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="TopNMembersSymbol" MsgType="M4" Direction="In" IsApplication="True" TableName="INF_TOP_N_MEMBERS_SYMBOL" ArchiveFunction="mdds_pkg.archive_top_n_members_symbol">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			Interface Specification for Market Data Distribution System 31
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Entire number of messages for issue information transmission or for a set of statistics results
+      -->
+    <Field Tag="911" Name="TotNumReports" Type="Int"  DataField="TOT_NUM_REPORTS"/>
+    <!--
+        Required: Y
+        Length: 6
+        Note: Sequence of rank in sell side
+      -->
+    <Field Tag="30215" Name="SellRankSeq" Type="Int" DataField="SELL_RANK_SEQ"/>
+    <!--
+        Required: Y
+        Length: 5
+        Note: Member ID in sell side
+      -->
+    <Field Tag="30213" Name="SellMemberNo"  DataField="SELL_MEMBER_NO"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in sell side
+      -->
+    <Field Tag="331" Name="SellVolume" Type="Int"   DataField="SELL_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Trading value in ask side
+      -->
+    <Field Tag="30168" Name="SellTradeAmount"  Type="Double"  DataField="SELL_TRADE_AMOUNT"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Sequence of rank in buy side
+      -->
+    <Field Tag="30216" Name="BuyRankSeq" Type="Int" DataField="BUY_RANK_SEQ"/>
+    <!--
+        Required: Y
+        Length: 5
+        Note: Member ID in buy side
+      -->
+    <Field Tag="30214" Name="BuyMemberNo"  DataField="BUY_MEMBER_NO"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in buy side
+      -->
+    <Field Tag="330" Name="BuyVolume"  Type="Int"  DataField="BUY_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Traded amount in bid side
+      -->
+    <Field Tag="30169" Name="BuyTradedAmount"  Type="Double"  DataField="BUY_TRADED_AMOUNT"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="OpenInterest" MsgType="MA" Direction="In" IsApplication="True" TableName="INF_OPEN_INTEREST" ArchiveFunction="mdds_pkg.archive_open_interest">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Indicates local date of trade refereneced in this message in YYYYMMDD format. YYYYMMDD
+      -->
+    <Field Tag="75" Name="TradeDate" Type="Date" DateFormat="yyyyMMdd"  DataField="TRADE_DATE"/>
+    <!--
+        Required: Y
+        Length: 10
+        Note: Open interest quantity
+      -->
+    <Field Tag="30540" Name="OpenInterestQty" Type="Int"  DataField="OPEN_INTEREST_QTY"/>
+  <!--
+        Required: N
+        Length: 18(9.8)
+        Note: Settlement price. It will be the reference price of tomorrow of a future instrument when it has any trade since its listing
+      -->
+    <Field Tag="30573" Name="SettlementPrice" Type="Double"  DataField="SETTLEMENT_PX"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="DeemTradePx" MsgType="ME" Direction="In" IsApplication="True" TableName="INF_DEEM_TRADE_PX" ArchiveFunction="mdds_pkg.archive_deem_trade_px">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			Interface Specification for Market Data Distribution System 32
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Deemed trading px
+      -->
+    <Field Tag="30552" Name="ExpectedTradePx" Type="Double"  DataField="EXPECTED_TRADE_PX"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Deem Trading Quantity
+      -->
+    <Field Tag="30553" Name="ExpectedTradeQty" Type="Int"  DataField="EXPECTED_TRADE_QTY"/>
+    <!--
+        Required: N
+        Length: 13(5.6)
+        Note: Yield of deemed trading price
+      -->
+    <Field Tag="30554" Name="ExpectedTradeYield" Type="Double"  DataField="EXPECTED_TRADE_YIELD"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="ForeignerOrderLimit" MsgType="MF" Direction="In" IsApplication="True" TableName="INF_FOREIGNER_ORDER_LIMIT" ArchiveFunction="mdds_pkg.archive_foreigner_order_limit">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 15
+        Note: Maximum number of shares allocated for foreign investors to buy. It is well known as "Total Room"
+      -->
+    <Field Tag="30557" Name="ForeignerBuyPosblQty" Type="Int" DataField="FOREIGNER_BUY_POSBL_QTY"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Quantity rooms for foreigners to buy more stocks of an instrument, which is calculated by (maximum room - current room)
+      -->
+    <Field Tag="30558" Name="ForeignerOrderLimitQty" Type="Int" DataField="FOREIGNER_ORDER_LIMIT_QTY"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="PriceLimitExpansion" MsgType="MX" Direction="In" IsApplication="True" TableName="INF_PRICELIMIT_EXPANSION" ArchiveFunction="mdds_pkg.archive_pricelimit_expansion">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation HHmmSSsss
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True" DataField="TRANSACT_TIME"/>
+    <!--
+        Required: N
+        Length: 2
+        Note: Final step number of PLE in the upper side actually triggered intraday
+      -->
+    <Field Tag="30649" Name="PleUpLmtStep" Type="Int"  DataField="PLE_UP_LMT_STEP"/>
+    <!--
+        Required: N
+        Length: 2
+        Note: Final step number of PLE in the lower side actually triggered intraday
+      -->
+    <Field Tag="30650" Name="PleLwLmtStep" Type="Int"  DataField="PLE_LW_LMT_STEP"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Available high limit price for the trading day
+      -->
+    <Field Tag="1149" Name="HighLimitPrice" Type="Double"  DataField="HIGH_LIMIT_PRICE"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Available low limit price for the trading day
+      -->
+    <Field Tag="1148" Name="LowLimitPrice" Type="Double"  DataField="LOW_LIMIT_PRICE"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="ETFiNAV" MsgType="MM" Direction="In" IsApplication="True" TableName="INF_ETF_INAV" ArchiveFunction="mdds_pkg.archive_etf_inav">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True"  DataField="TRANSACT_TIME"/>
+    <!--
+        Required: Y
+        Length: 24(18.4)
+        Note: Indicative Net Asset Value
+      -->
+    <Field Tag="30599" Name="iNAVvalue" Type="Double" DataField="INAV_VALUE"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="ETFiIndex" MsgType="MN" Direction="In" IsApplication="True" TableName="INF_ETFI_INDEX" ArchiveFunction="mdds_pkg.archive_etfi_index">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True"  DataField="TRANSACT_TIME"/>
+    <!--
+        Required: Y
+        Length: 10(6.2)
+        Note: Value of the index calculated
+      -->
+    <Field Tag="30217" Name="ValueIndexes" Type="Double" DataField="VALUE_INDEXES"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="ETFTrackingError" MsgType="MO" Direction="In" IsApplication="True" TableName="INF_ETF_TRACKING_ERROR" ArchiveFunction="mdds_pkg.archive_etf_tracking_error">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Indicates local date of trade refereneced in this message in YYYYMMDD format. Absence this field indicates current day.
+      -->
+    <Field Tag="75" Name="TradeDate" Type="Date" DateFormat="yyyyMMdd" DataField="TRADE_DATE"/>
+    <!--
+        Required: Y
+        Length: 13(5.6)
+        Note: Value of tracking error calculated
+      -->
+    <Field Tag="30600" Name="TrackingError" Type="Double" DataField="TRACKING_ERROR"/>
+    <!--
+        Required: Y
+        Length: 24(16.6)
+        Note: Value of disparate ratio for the tracking error which is calculated by closing price of the ETF - NAV Standard Trail
+      -->
+    <Field Tag="30602" Name="DisparateRatio" Type="Double" DataField="DISPARATE_RATIO"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="TopSymbolsQty" MsgType="MP" Direction="In" IsApplication="True" TableName="INF_TOP_SYMBOLS_QTY" ArchiveFunction="mdds_pkg.archive_top_symbols_qty">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Entire number of messages for issue information transmission or for a set of statistics results
+      -->
+    <Field Tag="911" Name="TotNumReports" Type="Int"  DataField="TOT_NUM_REPORTS"/>
+
+    <!--
+        Required: Y
+        Length: 6
+        Note: Sequential rank for 'Top N' statistics
+      -->
+    <Field Tag="30634" Name="Rank" Type="Int"  DataField="RANK"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Size (or quantity) for an entry of market data
+      -->
+    <Field Tag="271" Name="MDEntrySize" Type="Int"  DataField="MD_ENTRY_SIZE"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="TopSymbolsPx" MsgType="MQ" Direction="In" IsApplication="True" TableName="INF_TOP_SYMBOLS_PX" ArchiveFunction="mdds_pkg.archive_top_symbols_px">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Entire number of messages for issue information transmission or for a set of statistics results
+      -->
+    <Field Tag="911" Name="TotNumReports" Type="Int"  DataField="TOT_NUM_REPORTS"/>
+    <!--
+        Required: Y
+        Length: 6
+        Note: Sequential rank for 'Top N' statistics
+      -->
+    <Field Tag="30634" Name="Rank" Type="Int"  DataField="RANK"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 15(9.4)
+        Note: Px for an entry of market data
+      -->
+    <Field Tag="270" Name="MDEntryPx" Type="Double"  DataField="MD_ENTRY_PX"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="TopSymbolsHighPx" MsgType="MR" Direction="In" IsApplication="True" TableName="INF_TOP_SYMBOLS_HIGH_PX" ArchiveFunction="mdds_pkg.archive_top_symbols_high_px">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Entire number of messages for issue information transmission or for a set of statistics results
+      -->
+    <Field Tag="911" Name="TotNumReports" Type="Int"  DataField="TOT_NUM_REPORTS"/>
+    <!--
+        Required: Y
+        Length: 6
+        Note: Sequential rank for 'Top N' statistics
+      -->
+    <Field Tag="30634" Name="Rank" Type="Int"  DataField="RANK"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 10(6.2)
+        Note: Fluctuation ratio of the current price compared to the price of the previous day for a symbol defined as the exchange staffs want
+      -->
+    <Field Tag="30603" Name="PxFluctuationRatio" Type="Double"  DataField="PX_FLUCTUATION_RATIO"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="TopSymbolsLowPx" MsgType="MS" Direction="In" IsApplication="True" TableName="INF_TOP_SYMBOLS_LOW_PX" ArchiveFunction="mdds_pkg.archive_top_symbols_low_px">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Entire number of messages for issue information transmission or for a set of statistics results
+      -->
+    <Field Tag="911" Name="TotNumReports" Type="Int"  DataField="TOT_NUM_REPORTS"/>
+    <!--
+        Required: Y
+        Length: 6
+        Note: Sequential rank for 'Top N' statistics
+      -->
+    <Field Tag="30634" Name="Rank" Type="Int"  DataField="RANK"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 10(6.2)
+        Note: Fluctuation ratio of the current price compared to the price of the previous day for a symbol
+      -->
+    <Field Tag="30603" Name="PxFluctuationRatio" Type="Double"  DataField="PX_FLUCTUATION_RATIO"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="ForeignResult" MsgType="MT" Direction="In" IsApplication="True" TableName="INF_FOREIGN_RESULT" ArchiveFunction="mdds_pkg.archive_foreign_result">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Unique identifier to a Board where a given instrument is traded
+			G1 : Main
+			G2 : Pre open
+			G3 : Post closing
+			G4 : Odd lot
+			G7 : Buy-in
+			G8 : Sell-out
+			T1 : Negotiation (regular)
+			T4 : Negotiation (regular for Odd lot)
+			T2 : Negotiation (pre)
+			T3 : Negotiation (post)
+			T6 : Negotiation (post for Odd lot)
+			R1 : Negotiation (Repo)
+			AL : All Boards
+      -->
+    <Field Tag="20004" Name="BoardId" DataField="BOARD_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Code value of trading session
+                0 = Pre-opening
+                10 = Opening Auciton
+                11 = Opening Auction (Extended)
+                20 = Continuous Shifted Auction
+                21 = Continuous Shifter Auction (Extended0
+                30 = Closing Auction
+                40 = Connection
+                50 = VI Auction
+                51 = VI Auction (Extended)
+                60 = Closing price reception after closing
+                80 = Periodic Auction
+                90 = Trading Halt
+                99 = Market Closing
+      -->
+    <Field Tag="336" Name="TradingSessionId" DataField="TRADING_SESSION_ID"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: The unique code of an issue (a.k.a. instrument or symbol). Generally it is ISIN code but in case of Repo market it is defined as the exchange staffs want
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation
+      -->
+    <Field Tag="60" Name="TransactTime"  Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True"  DataField="TRANSACT_TIME"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Indicates whether a given order or quote is owned by foreigner.
+			00 Domestic(default)
+			10 Foreginer
+      -->
+    <Field Tag="20054" Name="FornInvestTypeCode" DataField="FORN_INVEST_TYPE_CODE"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in sell side
+      -->
+    <Field Tag="331" Name="SellVolume" Type="Int"  DataField="SELL_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23 (18.4)
+        Note: Trading value in ask side
+      -->
+    <Field Tag="30168" Name="SellTradeAmount" Type="Double"  DataField="SELL_TRADE_AMOUNT"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Trading volume in buy side
+      -->
+    <Field Tag="330" Name="BuyVolume" Type="Int"  DataField="BUY_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23(18.4)
+        Note: Traded amount in buy side
+      -->
+    <Field Tag="30169" Name="BuyTradedAmount" Type="Double"  DataField="BUY_TRADED_AMOUNT"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Total trading volume in sell side
+      -->
+    <Field Tag="30643" Name="TotalSellVolume" Type="Int"  DataField="TOTAL_SELL_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23 (18.4)
+        Note: Total trading value in ask side
+      -->
+    <Field Tag="30644" Name="TotalSellTradeAmount" Type="Double"  DataField="TOTAL_SELL_TRADE_AMOUNT"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Total trading volume in buy side
+      -->
+    <Field Tag="30645" Name="TotalBuyVolume" Type="Int"  DataField="TOTAL_BUY_VOLUME"/>
+    <!--
+        Required: Y
+        Length: 23 (18.4)
+        Note: Total trading value in bid side
+      -->
+    <Field Tag="30646" Name="TotalBuyTradedAmount" Type="Double"  DataField="TOTAL_BUY_TRADED_AMOUNT"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="Disclosure" MsgType="MU" Direction="In" IsApplication="True" TableName="INF_DISCLOSURE" ArchiveFunction="mdds_pkg.archive_disclosure">
+    <!--
+        Required: Y
+        Length: 3
+        Note: ID for identifying the market
+			<Hochiminh Exchange>
+			- STO: HoSE Stock Market
+			- BDO: HoSE Bond Market
+			- RPO: HoSE Repo Market
+			<Hanoi Exchange>
+			- STX: HNX Listed Stock Market
+			- BDX: HNX Government Bond Market
+			- DVX: HNX Derivative Market
+			- UPX: HNX UpCoM Stock Market
+			- HCX: HNX Corporate Bond Market
+      -->
+    <Field Tag="30001" Name="MarketId" DataField="MARKET_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Exchange code
+        HO: HoSE HX: HNX
+      -->
+    <Field Tag="207" Name="SecurityExchange" DataField="SECURITY_EXCHANGE"/>
+    <!--
+        Required: Y
+        Length: 12
+        Note: Symbol code (ISIN)
+      -->
+    <Field Tag="55" Name="Symbol" DataField="SYMBOL"/>
+    <!--
+        Required: N
+        Length: 120
+        Note: Instrument name
+      -->
+    <Field Tag="30629" Name="SymbolName"  DataField="SYMBOL_NAME"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: Unique ID of a disclosure
+      -->
+    <Field Tag="30605" Name="DisclosureId"  DataField="DISCLOSURE_ID"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: 1. Disclosure : Total message number of messages for a discosure when the length of text is over the size
+				2. Index Constituents Information : Total number of contituents for an index
+      -->
+    <Field Tag="30606" Name="TotalMsgNo" Type="Int"   DataField="TOTAL_MSG_NO"/>
+    <!--
+        Required: Y
+        Length: 16
+        Note: 1. Disclosure : Current message number of messages for a disclosure when the length of text is over the size 2. Index Constituents Information : Current sequence number of contituents for an index
+      -->
+    <Field Tag="30607" Name="CurrentMsgNo" Type="Int"   DataField="CURRENT_MSG_NO"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Value of type code for the language of the body text
+                1 = Vietnamese
+                2 = English
+      -->
+    <Field Tag="30608" Name="LanquageCategory" DataField="LANQUAGE_CATEGORY"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Whether the distributed data is on batch or in realtime
+                1 = Batch
+                2 = Realtime
+      -->
+    <Field Tag="30609" Name="DataCategory" DataField="DATA_CATEGORY"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Date of the publication occured
+      -->
+    <Field Tag="30610" Name="PublicInformationDate" Type="Date" DateFormat="yyyyMMdd"  DataField="PUBLIC_INFORMATION_DATE"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Date of the transmission occured
+      -->
+    <Field Tag="30611" Name="TransmissionDate" Type="Date" DateFormat="yyyyMMdd"  DataField="TRANSMISSION_DATE"/>
+    <!--
+        Required: Y
+        Length: 1
+        Note: Whether the distributed data is in normal or the revision version or to be deleted
+                1:Normal
+                2:Revision
+                3:Deleted
+      -->
+    <Field Tag="30612" Name="ProcessType" DataField="PROCESS_TYPE"/>
+    <!--
+        Required: Y
+        Length: 250
+        Note: TEXT DateFormat
+      -->
+    <Field Tag="148" Name="Headline" DataField="HEADLINE"/>
+    <!--
+        Required: Y
+        Length: 1000
+        Note: Body of disclosure
+      -->
+    <Field Tag="30613" Name="Body" DataField="BODY"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="TimeStamp" MsgType="MV" Direction="In" IsApplication="True" TableName="INF_TIME_STAMP" ArchiveFunction="mdds_pkg.archive_time_stamp">
+    <!--
+        Required: Y
+        Length: 9
+        Note: Time of execution/order creation
+      -->
+    <Field Tag="60" Name="TransactTime" Type="Date" DateFormat="HHmmssfff" TimeZoneEffected="True"  DataField="TRANSACT_TIME"/>
+  </Msg>
+  <!--Checked against 0.9A22 20240327-->
+  <Msg Name="DrvProductEvent" MsgType="MJ" Direction="In" IsApplication="True" TableName="INF_DRV_PRODUCT_EVENT" ArchiveFunction="mdds_pkg.archive_drv_product_event">
+    <!--
+        Required: Y
+        Length: 11
+        Note: Product is a layer or unit to define or manage rules of trading, clearing and settlement, instrument creating, calculating statistics, etc. Product ID is assigned to Product ID created by combination of exchange, market, security group, underlying asset and currency
+        List of Products (ID and description) will be defined later.
+
+        ▦▦ List of Products ▦▦   
+        ■ HOSE  ■   
+        S1STOST  : Stock
+        S1STOMF : Mutual Fund
+        S1STOEF  : Exchange Traded Fund
+        S1STOEW : Covered Warrant
+        B1BDOBS : Corporate Bond
+        R1RPOBS : Bond Repo
+        ■ HNX  ■ 
+        S1STXST  : Stock
+        S1STXMF : Mutual Fund
+        S1STXEF  : Exchange Traded Fund
+        S1STXSR  : Subscription Rights
+        S1STXDR : Depositary Receipt
+        S1UPXST : UpCom Stock
+        S1UPXEF : UpCom Exchange Traded Fund
+        S1UPXSR : UpCom Subscription Rights
+        B1BDXBG : Government Bond
+        B1HCXBS : HNX Corporate Bond
+        D1DVXFUVN3 : VN30 Index Futures
+        D1DVXFUB05 : 5-year Government Bond Futures
+        D1DVXFUB10 : 10-year Government Bond Futures
+	  -->
+    <Field Tag="20009" Name="ProductId" DataField="PRODUCT_ID"/>
+    <!--
+        Required: Y
+        Length: 2
+        Note: Event code for such as trading halt, low liquidation and so forth. Code '91' (Trading Halt for Repo) is only used in Gateway Repo trading system, not the Terminal Repo trading system: 01: Trading Halt 04: Liquidation Trading 91: Trading Halt for Repo
+      -->
+    <Field Tag="30575" Name="EventKindCode" DataField="EVENT_KIND_CODE"/>
+    <!--
+        Required: Y
+        Length: 4
+        Note: Reason for designating a specific event (trading halt, administrative instrument, etc.) to an instrument or a product
+      -->
+    <Field Tag="30576" Name="EventOccurrenceReasonCode" DataField="EVENT_OCCURRENCE_REASON_CODE"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Starting date of an event
+      -->
+    <Field Tag="30577" Name="EventStartDate" Type="Date" DateFormat="yyyyMMdd"  DataField="EVENT_START_DATE"/>
+    <!--
+        Required: Y
+        Length: 8
+        Note: Ending date of an event
+      -->
+    <Field Tag="30578" Name="EventEndDate" Type="Date" DateFormat="yyyyMMdd"  DataField="EVENT_END_DATE"/>
+  </Msg>
+</Specs>
