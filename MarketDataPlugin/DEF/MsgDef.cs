@@ -1,24 +1,25 @@
-using MarketDataPlugin;
+using MarketDataPlugin.Interfaces;
 
 namespace MarketDataPlugin
 {
-    public class MsgDef : FixItem
+    public class MsgDef : IMessageDef
     {
+        public string Name { get; }
         public string MsgType { get; }
         public DataDirection Direction { get; }
-        public List<object> Children { get; } = new List<object>();
+        private readonly List<object> children = new List<object>();
+        public IReadOnlyList<object> Children => children.AsReadOnly();
 
-        public MsgDef(string name, string msgType, DataDirection direction) : base("", name)
+        public MsgDef(string name, string msgType, DataDirection direction)
         {
+            Name = name;
             MsgType = msgType;
             Direction = direction;
         }
 
-        public void AddChild(object child) => Children.Add(child);
-
-        public override void Parse(string fixMessage)
+        public void AddChild(object child)
         {
-            throw new NotImplementedException("Parse is not implemented for MsgDef; use Msg class for runtime parsing.");
+            children.Add(child);
         }
     }
 }

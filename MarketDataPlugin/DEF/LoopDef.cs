@@ -1,22 +1,27 @@
+using MarketDataPlugin.Interfaces;
+
 namespace MarketDataPlugin
 {
-    public class LoopDef : FixItem
+    public class LoopDef : ILoopDef
     {
+        public string Tag { get; }
+        public string Name { get; }
         public string Counter { get; }
         public bool Required { get; }
-        public List<object> Children { get; } = new List<object>();
+        private readonly List<object> children = new List<object>();
+        public IReadOnlyList<object> Children => children.AsReadOnly();
 
-        public LoopDef(string tag, string name, string counter, bool required) : base(tag, name)
+        public LoopDef(string tag, string name, string counter, bool required)
         {
+            Tag = tag;
+            Name = name;
             Counter = counter;
             Required = required;
         }
 
-        public void AddChild(object child) => Children.Add(child);
-
-        public override void Parse(string fixMessage)
+        public void AddChild(object child)
         {
-            throw new NotImplementedException("Parse is not implemented for LoopDef; use Loop class for runtime parsing.");
+            children.Add(child);
         }
     }
 }
