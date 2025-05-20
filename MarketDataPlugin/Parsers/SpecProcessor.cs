@@ -15,7 +15,7 @@ namespace MarketDataPlugin
                 Console.WriteLine($"Error: XML file not found at {xmlFilePath}. Please create it.");
                 return;
             }
-
+            //phase 1
             var specs = new Specs("4", "4");
             try
             {

@@ -58,7 +58,8 @@ namespace MarketDataPlugin
         private void UpdateAttributes(XmlDocument doc)
         {
             var specsNode = doc.SelectSingleNode("/Specs");
-            BeginString = specsNode.Attributes?["BeginString"]?.Value ?? BeginString;
+            var attributes = specsNode?.Attributes;
+            BeginString = attributes?["BeginString"]?.Value ?? BeginString;
             InMsgChecksum = bool.TryParse(specsNode.Attributes?["InMsgChecksum"]?.Value, out bool inChecksum) ? inChecksum : InMsgChecksum;
             OutMsgChecksum = bool.TryParse(specsNode.Attributes?["OutMsgChecksum"]?.Value, out bool outChecksum) ? outChecksum : OutMsgChecksum;
             TimeZone = int.TryParse(specsNode.Attributes?["TimeZone"]?.Value, out int timeZone) ? timeZone : TimeZone;
