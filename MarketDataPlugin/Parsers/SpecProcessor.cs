@@ -1,6 +1,5 @@
 using System;
 using System.IO;
-using MarketDataPlugin;
 
 namespace MarketDataPlugin
 {
@@ -10,7 +9,6 @@ namespace MarketDataPlugin
         {
             Console.WriteLine("--- Starting MarketDataPlugin Test ---");
 
-            // Test 1: Parsing FIX Specification (FixParser -> Specs)
             Console.WriteLine("\nTest 1: Parsing FIX Specification (FixParser -> Specs)");
             if (!File.Exists(xmlFilePath))
             {
@@ -36,7 +34,6 @@ namespace MarketDataPlugin
                 return;
             }
 
-            // Test 2: Validating Message Definitions (MsgDef, FieldDef, LoopDef)
             Console.WriteLine("\nTest 2: Validating Message Definitions (MsgDef, FieldDef, LoopDef)");
             if (specs.Messages.Count == 0)
             {
@@ -54,7 +51,10 @@ namespace MarketDataPlugin
                     {
                         if (child is FieldDef fieldDef)
                         {
-                            Console.WriteLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, Required={fieldDef.Required}, DataField={fieldDef.DataField ?? "N/A"}, IsLog={fieldDef.IsLog}");
+                            string dateFormatStr = fieldDef.Type == FieldType.Date && fieldDef.DateFormat != null
+                                ? $", DateFormat={fieldDef.DateFormat}"
+                                : "";
+                            Console.WriteLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, Required={fieldDef.Required}, DataField={fieldDef.DataField ?? "N/A"}, IsLog={fieldDef.IsLog}{dateFormatStr}");
                         }
                         else if (child is LoopDef loopDef)
                         {
@@ -63,7 +63,10 @@ namespace MarketDataPlugin
                             {
                                 if (loopChild is FieldDef loopFieldDef)
                                 {
-                                    Console.WriteLine($"    Nested FieldDef: Tag={loopFieldDef.Tag}, Name={loopFieldDef.Name}, Type={loopFieldDef.Type}, Required={loopFieldDef.Required}, DataField={loopFieldDef.DataField ?? "N/A"}, IsLog={loopFieldDef.IsLog}");
+                                    string loopDateFormatStr = loopFieldDef.Type == FieldType.Date && loopFieldDef.DateFormat != null
+                                        ? $", DateFormat={loopFieldDef.DateFormat}"
+                                        : "";
+                                    Console.WriteLine($"    Nested FieldDef: Tag={loopFieldDef.Tag}, Name={loopFieldDef.Name}, Type={loopFieldDef.Type}, Required={loopFieldDef.Required}, DataField={loopFieldDef.DataField ?? "N/A"}, IsLog={loopFieldDef.IsLog}{loopDateFormatStr}");
                                 }
                             }
                         }

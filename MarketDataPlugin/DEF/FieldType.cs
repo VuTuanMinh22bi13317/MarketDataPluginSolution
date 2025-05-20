@@ -1,11 +1,11 @@
-namespace MarketDataPlugin
+﻿namespace MarketDataPlugin
 {
     public enum FieldType
     {
         String,
         Int,
-        DateTime,  // Handles both date and datetime formats
-        Double,    // Replaces Float for floating-point numbers
+        Date,  // Đổi từ DateTime thành Date để khớp với XML
+        Double,
         Boolean
     }
 }
