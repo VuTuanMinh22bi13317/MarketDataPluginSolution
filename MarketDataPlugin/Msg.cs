@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 
 namespace MarketDataPlugin
 {
@@ -25,7 +26,8 @@ namespace MarketDataPlugin
 
         public override string ToString()
         {
-            var result = new List<string> { $"Msg: Name={Name}, MsgType={MsgType}, Direction={Direction}, Children={Children.Count}" };
+            var result = new StringBuilder();
+            result.AppendLine($"Msg: Name={Name}, MsgType={MsgType}, Direction={Direction}, Children={Children.Count}");
             foreach (var child in Children)
             {
                 if (child.Value is FieldDef fieldDef)
@@ -33,15 +35,14 @@ namespace MarketDataPlugin
                     string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
                         ? $", DateFormat={fieldDef.DateFormat}"
                         : "";
-                    string isLogDisplay = (Name == "Header") ? $", IsLog={fieldDef.IsLog}" : "";
-                    result.Add($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}{dateFormatDisplay}{isLogDisplay}");
+                    result.AppendLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
                 }
                 else if (child.Value is LoopDef loopDef)
                 {
-                    result.Add(loopDef.ToString());
+                    result.AppendLine(loopDef.ToString());
                 }
             }
-            return string.Join("\n", result);
+            return result.ToString();
         }
     }
 }

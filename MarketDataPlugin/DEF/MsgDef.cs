@@ -9,8 +9,6 @@ namespace MarketDataPlugin
         public DataDirection Direction { get; }
         private readonly Dictionary<string, object> children = new Dictionary<string, object>();
 
-        public IReadOnlyDictionary<string, object> Children => children.AsReadOnly();
-
         public MsgDef(string name, string msgType, DataDirection direction)
         {
             Name = name;
@@ -21,6 +19,11 @@ namespace MarketDataPlugin
         public void AddChild(string key, object child)
         {
             children[key] = child;
+        }
+
+        public IReadOnlyDictionary<string, object> GetChildren()
+        {
+            return children.AsReadOnly();
         }
     }
 }

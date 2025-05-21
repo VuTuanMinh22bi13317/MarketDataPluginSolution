@@ -9,8 +9,6 @@ namespace MarketDataPlugin
         public string Counter { get; }
         private readonly Dictionary<string, object> children = new Dictionary<string, object>();
 
-        public IReadOnlyDictionary<string, object> Children => children.AsReadOnly();
-
         public LoopDef(string tag, string name, string counter)
         {
             Tag = tag;
@@ -21,6 +19,11 @@ namespace MarketDataPlugin
         public void AddChild(string key, object child)
         {
             children[key] = child;
+        }
+
+        public IReadOnlyDictionary<string, object> GetChildren()
+        {
+            return children.AsReadOnly();
         }
     }
 }

@@ -8,12 +8,24 @@ namespace MarketDataPlugin
 {
     public class Specs
     {
-        public MsgDef? Header { get; private set; }
+        public IReadOnlyDictionary<string, FieldDef> HeaderFields { get; private set; }
         public string BeginString { get; private set; } = "FIX.4.4";
         public bool InMsgChecksum { get; private set; } = false;
         public bool OutMsgChecksum { get; private set; } = true;
         public int TimeZone { get; private set; } = 7;
         private readonly Dictionary<string, MsgDef> messages = new Dictionary<string, MsgDef>();
+
+        public Specs(string majorVersion, string minorVersion)
+        {
+            if (string.IsNullOrEmpty(majorVersion) || string.IsNullOrEmpty(minorVersion))
+                throw new ArgumentException("Major and minor versions must not be null or empty.");
+
+            BeginString = $"FIX.{majorVersion}.{minorVersion}";
+            InMsgChecksum = false;
+            OutMsgChecksum = true;
+            TimeZone = 7;
+            HeaderFields = new Dictionary<string, FieldDef>().AsReadOnly(); // Khởi tạo để tránh cảnh báo
+        }
 
         public void Load(string specsFile)
         {
@@ -25,24 +37,21 @@ namespace MarketDataPlugin
 
         public void DisplayHeader()
         {
-            if (Header == null)
+            if (HeaderFields == null)
             {
                 Console.WriteLine("Header is not loaded.");
                 return;
             }
 
             Console.WriteLine("\nHeader Details:");
-            Console.WriteLine($"  Header Name: {Header.Name}, MsgType: {Header.MsgType}, Direction: {Header.Direction}");
             Console.WriteLine("  Header Fields:");
-            foreach (var field in Header.Children)
+            foreach (var field in HeaderFields)
             {
-                if (field.Value is FieldDef fieldDef)
-                {
-                    string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
-                        ? $", DateFormat={fieldDef.DateFormat}"
-                        : "";
-                    Console.WriteLine($"    FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
-                }
+                var fieldDef = field.Value;
+                string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
+                    ? $", DateFormat={fieldDef.DateFormat}"
+                    : "";
+                Console.WriteLine($"    FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
             }
         }
 
@@ -83,7 +92,7 @@ namespace MarketDataPlugin
             if (headerNode == null)
                 throw new InvalidOperationException("Header node not found in XML.");
 
-            var headerDef = new MsgDef("Header", "Header", DataDirection.In);
+            var headerFields = new Dictionary<string, FieldDef>();
 
             var childNodes = headerNode.SelectNodes("Field");
             if (childNodes != null)
@@ -91,11 +100,11 @@ namespace MarketDataPlugin
                 foreach (XmlNode childNode in childNodes)
                 {
                     var fieldDef = ParseFieldDef(childNode);
-                    headerDef.AddChild(fieldDef.Tag, fieldDef);
+                    headerFields[fieldDef.Tag] = fieldDef;
                 }
             }
 
-            Header = headerDef;
+            HeaderFields = headerFields.AsReadOnly();
         }
 
         private void ParseMessages(XmlDocument doc)
@@ -187,17 +196,6 @@ namespace MarketDataPlugin
             return loopDef;
         }
 
-        public Specs(string majorVersion, string minorVersion)
-        {
-            if (string.IsNullOrEmpty(majorVersion) || string.IsNullOrEmpty(minorVersion))
-                throw new ArgumentException("Major and minor versions must not be null or empty.");
-
-            BeginString = $"FIX.{majorVersion}.{minorVersion}";
-            InMsgChecksum = false;
-            OutMsgChecksum = true;
-            TimeZone = 7;
-        }
-
         public DataDirection GetDirection(string directionStr)
         {
             if (string.IsNullOrEmpty(directionStr))
@@ -223,7 +221,6 @@ namespace MarketDataPlugin
             return DataDirection.In;
         }
 
-        // Thêm phương thức để truy cập messages nếu cần
         public bool TryGetMessage(string msgType, out MsgDef? msgDef)
         {
             return messages.TryGetValue(msgType, out msgDef);
