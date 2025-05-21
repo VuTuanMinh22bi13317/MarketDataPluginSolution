@@ -1,59 +1,47 @@
+using System.Collections.Generic;
+
 namespace MarketDataPlugin
 {
-    public class Loop : MsgChildDef
+    public class Loop
     {
-        public List<Field> Fields { get; } = new List<Field>();
-        public List<Loop> Loops { get; } = new List<Loop>();
+        public string Tag { get; }
+        public string Name { get; }
+        public string Counter { get; }
+        private readonly Dictionary<string, object> children = new Dictionary<string, object>();
 
-        public Loop(string name, LoopDef? definition = null) : base(definition?.Tag ?? "", name)
+        public IReadOnlyDictionary<string, object> Children => children.AsReadOnly();
+
+        public Loop(string tag, string name, string counter)
         {
-            if (definition != null)
-            {
-                foreach (var child in definition.Children)
-                {
-                    if (child is FieldDef fieldDef)
-                    {
-                        Fields.Add(new Field(fieldDef.Tag, fieldDef.Name ?? "Unknown", fieldDef.Type, fieldDef.Required));
-                    }
-                    else if (child is LoopDef loopDef)
-                    {
-                        Loops.Add(new Loop(loopDef.Name ?? "Unknown", loopDef));
-                    }
-                }
-            }
+            Tag = tag;
+            Name = name;
+            Counter = counter;
         }
 
-        public override void Parse(string fixMessage)
+        public void AddChild(string key, object child)
         {
-            // Expecting fixMessage to contain a repeating group (e.g., "268=2^269=0^270=100...")
-            // Split by FIX delimiter (^) and process each field
-            if (string.IsNullOrEmpty(fixMessage))
-                throw new ArgumentException("FIX message is empty.");
+            children[key] = child;
+        }
 
-            var parts = fixMessage.Split('^');
-            if (parts.Length == 0)
-                throw new ArgumentException($"Invalid FIX message for loop {Name}: {fixMessage}");
-
-            foreach (var part in parts)
+        public override string ToString()
+        {
+            var result = new List<string> { $"Loop: Tag={Tag}, Name={Name}, Counter={Counter}, Children={Children.Count}" };
+            foreach (var child in Children)
             {
-                foreach (var field in Fields)
+                if (child.Value is FieldDef fieldDef)
                 {
-                    try
-                    {
-                        field.Parse(part);
-                    }
-                    catch (ArgumentException) { /* Skip fields that don't match */ }
+                    string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
+                        ? $", DateFormat={fieldDef.DateFormat}"
+                        : "";
+                    string isLogDisplay = (fieldDef.Tag.StartsWith("8") || fieldDef.Tag.StartsWith("9") || fieldDef.Tag.StartsWith("35") || fieldDef.Tag.StartsWith("49") || fieldDef.Tag.StartsWith("56") || fieldDef.Tag.StartsWith("34") || fieldDef.Tag.StartsWith("52")) ? $", IsLog={fieldDef.IsLog}" : "";
+                    result.Add($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}{dateFormatDisplay}{isLogDisplay}");
                 }
-
-                foreach (var loop in Loops)
+                else if (child.Value is LoopDef loopDef)
                 {
-                    try
-                    {
-                        loop.Parse(part);
-                    }
-                    catch (ArgumentException) { /* Skip loops that don't match */ }
+                    result.Add(loopDef.ToString());
                 }
             }
+            return string.Join("\n", result);
         }
     }
 }

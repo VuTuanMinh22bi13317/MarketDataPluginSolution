@@ -1,27 +1,26 @@
-using MarketDataPlugin.Interfaces;
+﻿using System.Collections.Generic;
 
 namespace MarketDataPlugin
 {
-    public class LoopDef : ILoopDef
+    public class LoopDef
     {
         public string Tag { get; }
         public string Name { get; }
         public string Counter { get; }
-        public bool Required { get; }
-        private readonly List<object> children = new List<object>();
-        public IReadOnlyList<object> Children => children.AsReadOnly();
+        private readonly Dictionary<string, object> children = new Dictionary<string, object>();
 
-        public LoopDef(string tag, string name, string counter, bool required)
+        public IReadOnlyDictionary<string, object> Children => children.AsReadOnly();
+
+        public LoopDef(string tag, string name, string counter)
         {
             Tag = tag;
             Name = name;
             Counter = counter;
-            Required = required;
         }
 
-        public void AddChild(object child)
+        public void AddChild(string key, object child)
         {
-            children.Add(child);
+            children[key] = child;
         }
     }
 }

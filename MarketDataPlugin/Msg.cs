@@ -1,57 +1,47 @@
+using System.Collections.Generic;
+
 namespace MarketDataPlugin
 {
-    public class Msg : MsgChildDef
+    public class Msg
     {
-        public List<Field> Fields { get; } = new List<Field>();
-        public List<Loop> Loops { get; } = new List<Loop>();
+        public string Name { get; }
+        public string MsgType { get; }
+        public DataDirection Direction { get; }
+        private readonly Dictionary<string, object> children = new Dictionary<string, object>();
 
-        public Msg(string name, MsgDef definition) : base("", name)
+        public IReadOnlyDictionary<string, object> Children => children.AsReadOnly();
+
+        public Msg(string name, string msgType, DataDirection direction)
         {
-            foreach (var child in definition.Children)
-            {
-                if (child is FieldDef fieldDef)
-                {
-                    Fields.Add(new Field(fieldDef.Tag, fieldDef.Name, fieldDef.Type, fieldDef.Required));
-                }
-                else if (child is LoopDef loopDef)
-                {
-                    Loops.Add(new Loop(loopDef.Name, loopDef));
-                }
-            }
+            Name = name;
+            MsgType = msgType;
+            Direction = direction;
         }
 
-        public bool IsMsgType(string msgType) => msgType == Tag;
-
-        public override void Parse(string fixMessage)
+        public void AddChild(string key, object child)
         {
-            // Expecting fixMessage in the format "field1^field2^..." (e.g., "35=d^55=ABC^268=2...")
-            if (string.IsNullOrEmpty(fixMessage))
-                throw new ArgumentException("FIX message is empty.");
+            children[key] = child;
+        }
 
-            var parts = fixMessage.Split('^');
-            if (parts.Length == 0)
-                throw new ArgumentException($"Invalid FIX message for msg {Name}: {fixMessage}");
-
-            foreach (var part in parts)
+        public override string ToString()
+        {
+            var result = new List<string> { $"Msg: Name={Name}, MsgType={MsgType}, Direction={Direction}, Children={Children.Count}" };
+            foreach (var child in Children)
             {
-                foreach (var field in Fields)
+                if (child.Value is FieldDef fieldDef)
                 {
-                    try
-                    {
-                        field.Parse(part);
-                    }
-                    catch (ArgumentException) { /* Skip fields that don't match */ }
+                    string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
+                        ? $", DateFormat={fieldDef.DateFormat}"
+                        : "";
+                    string isLogDisplay = (Name == "Header") ? $", IsLog={fieldDef.IsLog}" : "";
+                    result.Add($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}{dateFormatDisplay}{isLogDisplay}");
                 }
-
-                foreach (var loop in Loops)
+                else if (child.Value is LoopDef loopDef)
                 {
-                    try
-                    {
-                        loop.Parse(part);
-                    }
-                    catch (ArgumentException) { /* Skip loops that don't match */ }
+                    result.Add(loopDef.ToString());
                 }
             }
+            return string.Join("\n", result);
         }
     }
 }
