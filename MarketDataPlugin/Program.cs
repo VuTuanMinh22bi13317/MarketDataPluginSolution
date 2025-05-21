@@ -1,5 +1,4 @@
-﻿using System;
-using MarketDataPlugin;
+﻿using MarketDataPlugin.Parsers;
 
 namespace MarketDataPlugin
 {
@@ -7,8 +6,9 @@ namespace MarketDataPlugin
     {
         static void Main(string[] args)
         {
-            string xmlFilePath = args.Length > 0 ? args[0] : "C:/Users/Admin/MarketDataPluginSolution/MarketDataPlugin/Specs/MDDS-Specs.xml";
-            SpecProcessor.ProcessSpecs(xmlFilePath);
+            string specsFile = "C:/Users/Admin/MarketDataPluginSolution/MarketDataPlugin/Specs/MDDS-Specs.xml";
+            var processor = new SpecProcessor(specsFile, "4", "4");
+            processor.Process();
         }
     }
 }

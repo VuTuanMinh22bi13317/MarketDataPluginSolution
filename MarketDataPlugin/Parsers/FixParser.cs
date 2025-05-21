@@ -1,10 +1,22 @@
-﻿namespace MarketDataPlugin
+﻿using MarketDataPlugin;
+
+namespace MarketDataPlugin.Parsers
 {
-    public static class FixParser
+    public class FixParser
     {
-        public static void ParseSpecsFromXml(string xmlFilePath, Specs specs)
+        private readonly Specs specs;
+
+        public FixParser(string specsFile, string majorVersion, string minorVersion)
         {
-            specs.Load(xmlFilePath); // Đổi từ LoadFromXml thành Load
+            specs = new Specs(majorVersion, minorVersion);
+            specs.Load(specsFile);
+        }
+
+        // Thêm logic parse nếu cần
+        public void Parse()
+        {
+            // Logic parse FIX messages
+            Console.WriteLine("Parsing FIX messages...");
         }
     }
 }

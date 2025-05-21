@@ -1,82 +1,58 @@
-using System;
-using System.IO;
+using MarketDataPlugin;
 
-namespace MarketDataPlugin
+namespace MarketDataPlugin.Parsers
 {
     public class SpecProcessor
     {
-        public static void ProcessSpecs(string xmlFilePath)
+        private readonly Specs specs;
+
+        public SpecProcessor(string specsFile, string majorVersion, string minorVersion)
         {
-            Console.WriteLine("--- Starting MarketDataPlugin Test ---");
+            specs = new Specs(majorVersion, minorVersion);
+            specs.Load(specsFile);
+        }
 
-            Console.WriteLine("\nTest 1: Parsing FIX Specification (FixParser -> Specs)");
-            if (!File.Exists(xmlFilePath))
-            {
-                Console.WriteLine($"Error: XML file not found at {xmlFilePath}. Please create it.");
-                return;
-            }
-            //phase 1
-            var specs = new Specs("4", "4");
-            try
-            {
-                FixParser.ParseSpecsFromXml(xmlFilePath, specs);
-                Console.WriteLine("Specs parsed successfully:");
-                Console.WriteLine($"  BeginString: {specs.BeginString ?? "Not specified"}");
-                Console.WriteLine($"  InMsgChecksum: {specs.InMsgChecksum}");
-                Console.WriteLine($"  OutMsgChecksum: {specs.OutMsgChecksum}");
-                Console.WriteLine($"  TimeZone: {specs.TimeZone}");
-                Console.WriteLine($"  Messages Count: {specs.Messages.Count}");
-                Console.WriteLine($"  Loops Count: {specs.Loops.Count}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error parsing XML: {ex.Message}");
-                return;
-            }
+        public void Process()
+        {
+            Console.WriteLine("Processing Specs...");
+            Console.WriteLine($"BeginString: {specs.BeginString}");
+            Console.WriteLine($"InMsgChecksum: {specs.InMsgChecksum}");
+            Console.WriteLine($"OutMsgChecksum: {specs.OutMsgChecksum}");
+            Console.WriteLine($"TimeZone: {specs.TimeZone}");
 
-            Console.WriteLine("\nTest 2: Validating Message Definitions (MsgDef, FieldDef, LoopDef)");
-            if (specs.Messages.Count == 0)
-            {
-                Console.WriteLine("Error: No messages defined in specs.");
-                return;
-            }
+            specs.DisplayHeader();
 
-            foreach (var message in specs.Messages)
+            Console.WriteLine("\nMessages:");
+            foreach (var msgEntry in specs.Messages)
             {
-                if (message is MsgDef msgDef)
+                var msg = msgEntry.Value;
+                Console.WriteLine($"Message: Name={msg.Name}, MsgType={msg.MsgType}, Direction={msg.Direction}");
+                Console.WriteLine($"  Children Count: {msg.Children.Count}");
+                foreach (var childEntry in msg.Children)
                 {
-                    Console.WriteLine($"Message: Name={msgDef.Name}, MsgType={msgDef.MsgType}, Direction={msgDef.Direction}");
-                    Console.WriteLine($"  Children Count: {msgDef.Children.Count}");
-                    foreach (var child in msgDef.Children)
+                    if (childEntry.Value is FieldDef fieldDef)
                     {
-                        if (child is FieldDef fieldDef)
+                        string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
+                            ? $", DateFormat={fieldDef.DateFormat}"
+                            : "";
+                        Console.WriteLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
+                    }
+                    else if (childEntry.Value is LoopDef loopDef)
+                    {
+                        Console.WriteLine($"  LoopDef: Tag={loopDef.Tag}, Name={loopDef.Name}, Counter={loopDef.Counter}, Children Count={loopDef.Children.Count}");
+                        foreach (var nestedChildEntry in loopDef.Children)
                         {
-                            string dateFormatStr = fieldDef.Type == FieldType.Date && fieldDef.DateFormat != null
-                                ? $", DateFormat={fieldDef.DateFormat}"
-                                : "";
-                            Console.WriteLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, Required={fieldDef.Required}, DataField={fieldDef.DataField ?? "N/A"}, IsLog={fieldDef.IsLog}{dateFormatStr}");
-                        }
-                        else if (child is LoopDef loopDef)
-                        {
-                            Console.WriteLine($"  LoopDef: Tag={loopDef.Tag}, Name={loopDef.Name}, Counter={loopDef.Counter}, Required={loopDef.Required}, Children Count={loopDef.Children.Count}");
-                            foreach (var loopChild in loopDef.Children)
+                            if (nestedChildEntry.Value is FieldDef nestedField)
                             {
-                                if (loopChild is FieldDef loopFieldDef)
-                                {
-                                    string loopDateFormatStr = loopFieldDef.Type == FieldType.Date && loopFieldDef.DateFormat != null
-                                        ? $", DateFormat={loopFieldDef.DateFormat}"
-                                        : "";
-                                    Console.WriteLine($"    Nested FieldDef: Tag={loopFieldDef.Tag}, Name={loopFieldDef.Name}, Type={loopFieldDef.Type}, Required={loopFieldDef.Required}, DataField={loopFieldDef.DataField ?? "N/A"}, IsLog={loopFieldDef.IsLog}{loopDateFormatStr}");
-                                }
+                                string nestedDateFormatDisplay = nestedField.Type == FieldType.Date && !string.IsNullOrEmpty(nestedField.DateFormat)
+                                    ? $", DateFormat={nestedField.DateFormat}"
+                                    : "";
+                                Console.WriteLine($"    Nested FieldDef: Tag={nestedField.Tag}, Name={nestedField.Name}, Type={nestedField.Type}, DataField={nestedField.DataField}, IsLog={nestedField.IsLog}{nestedDateFormatDisplay}");
                             }
                         }
                     }
                 }
             }
-
-            Console.WriteLine("\n--- Test Completed (Config Display Only) ---");
-            Console.WriteLine("Press any key to exit.");
-            Console.ReadKey();
         }
     }
 }

@@ -3,25 +3,50 @@ using System.IO;
 using System.Text.RegularExpressions;
 using System.Xml;
 using System.Collections.Generic;
-using MarketDataPlugin.Interfaces;
 
 namespace MarketDataPlugin
 {
     public class Specs
     {
+        public MsgDef? Header { get; private set; }
+        public string BeginString { get; private set; } = "FIX.4.4";
+        public bool InMsgChecksum { get; private set; } = false;
+        public bool OutMsgChecksum { get; private set; } = true;
+        public int TimeZone { get; private set; } = 7;
+        private readonly Dictionary<string, MsgDef> messages = new Dictionary<string, MsgDef>();
+        private readonly Dictionary<string, LoopDef> loops = new Dictionary<string, LoopDef>();
+        public IReadOnlyDictionary<string, MsgDef> Messages => messages.AsReadOnly();
+        public IReadOnlyDictionary<string, LoopDef> Loops => loops.AsReadOnly();
+
         public void Load(string specsFile)
         {
-            // Bước 1: Đọc nội dung file XML
             string xmlContent = ReadXmlContent(specsFile);
-
-            // Bước 2: Parse XML thành XmlDocument
             XmlDocument doc = ParseXmlDocument(xmlContent);
-
-            // Bước 3: Cập nhật các thuộc tính từ XML
-            UpdateAttributes(doc);
-
-            // Bước 4: Parse các message và loop
+            ParseHeader(doc);
             ParseMessages(doc);
+        }
+
+        public void DisplayHeader()
+        {
+            if (Header == null)
+            {
+                Console.WriteLine("Header is not loaded.");
+                return;
+            }
+
+            Console.WriteLine("\nHeader Details:");
+            Console.WriteLine($"  Header Name: {Header.Name}, MsgType: {Header.MsgType}, Direction: {Header.Direction}");
+            Console.WriteLine("  Header Fields:");
+            foreach (var field in Header.Children)
+            {
+                if (field.Value is FieldDef fieldDef)
+                {
+                    string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
+                        ? $", DateFormat={fieldDef.DateFormat}"
+                        : "";
+                    Console.WriteLine($"    FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
+                }
+            }
         }
 
         private string ReadXmlContent(string specsFile)
@@ -55,14 +80,25 @@ namespace MarketDataPlugin
             }
         }
 
-        private void UpdateAttributes(XmlDocument doc)
+        private void ParseHeader(XmlDocument doc)
         {
-            var specsNode = doc.SelectSingleNode("/Specs");
-            var attributes = specsNode?.Attributes;
-            BeginString = attributes?["BeginString"]?.Value ?? BeginString;
-            InMsgChecksum = bool.TryParse(specsNode.Attributes?["InMsgChecksum"]?.Value, out bool inChecksum) ? inChecksum : InMsgChecksum;
-            OutMsgChecksum = bool.TryParse(specsNode.Attributes?["OutMsgChecksum"]?.Value, out bool outChecksum) ? outChecksum : OutMsgChecksum;
-            TimeZone = int.TryParse(specsNode.Attributes?["TimeZone"]?.Value, out int timeZone) ? timeZone : TimeZone;
+            var headerNode = doc.SelectSingleNode("/Specs/Header");
+            if (headerNode == null)
+                throw new InvalidOperationException("Header node not found in XML.");
+
+            var headerDef = new MsgDef("Header", "Header", DataDirection.In);
+
+            var childNodes = headerNode.SelectNodes("Field");
+            if (childNodes != null)
+            {
+                foreach (XmlNode childNode in childNodes)
+                {
+                    var fieldDef = ParseFieldDef(childNode);
+                    headerDef.AddChild(fieldDef.Tag, fieldDef);
+                }
+            }
+
+            Header = headerDef;
         }
 
         private void ParseMessages(XmlDocument doc)
@@ -81,51 +117,28 @@ namespace MarketDataPlugin
                     DataDirection direction = GetDirection(directionStr);
 
                     var msgDef = new MsgDef(name, msgType, direction);
-                    messages.Add(msgDef);
+                    messages[msgType] = msgDef;
 
                     var childNodes = msgNode.SelectNodes("Field | Loop");
                     if (childNodes != null)
                     {
                         foreach (XmlNode childNode in childNodes)
                         {
-                            bool required = ParseRequiredFromComment(childNode);
-
                             if (childNode.Name == "Field")
                             {
                                 var fieldDef = ParseFieldDef(childNode);
-                                msgDef.AddChild(fieldDef);
+                                msgDef.AddChild(fieldDef.Tag, fieldDef);
                             }
                             else if (childNode.Name == "Loop")
                             {
                                 var loopDef = ParseLoopDef(childNode);
-                                msgDef.AddChild(loopDef);
-                                loops.Add(loopDef);
+                                msgDef.AddChild(loopDef.Tag, loopDef);
+                                loops[loopDef.Tag] = loopDef;
                             }
                         }
                     }
                 }
             }
-        }
-
-        private bool ParseRequiredFromComment(XmlNode node)
-        {
-            string commentText = "";
-            var previousNode = node.PreviousSibling;
-            while (previousNode != null && previousNode.NodeType == XmlNodeType.Comment)
-            {
-                commentText = previousNode.InnerText + "\n" + commentText;
-                previousNode = previousNode.PreviousSibling;
-            }
-
-            if (!string.IsNullOrEmpty(commentText))
-            {
-                var match = Regex.Match(commentText, @"Required:\s*(Y|N)", RegexOptions.IgnoreCase);
-                if (match.Success)
-                {
-                    return match.Groups[1].Value.ToUpper() == "Y";
-                }
-            }
-            return false;
         }
 
         private FieldDef ParseFieldDef(XmlNode node)
@@ -152,8 +165,7 @@ namespace MarketDataPlugin
                 dateFormat = node.Attributes?["DateFormat"]?.Value;
             }
 
-            bool required = ParseRequiredFromComment(node);
-            return new FieldDef(fieldTagValue, fieldName, type, required, dataField, isLog, dateFormat);
+            return new FieldDef(fieldTagValue, fieldName, type, dataField, isLog, dateFormat);
         }
 
         private LoopDef ParseLoopDef(XmlNode node)
@@ -161,9 +173,8 @@ namespace MarketDataPlugin
             string loopTagValue = node.Attributes?["Tag"]?.Value ?? "";
             string loopName = node.Attributes?["Name"]?.Value ?? "Unknown";
             string counterValue = node.Attributes?["Counter"]?.Value ?? "";
-            bool required = ParseRequiredFromComment(node);
 
-            var loopDef = new LoopDef(loopTagValue, loopName, counterValue, required);
+            var loopDef = new LoopDef(loopTagValue, loopName, counterValue);
 
             var loopChildNodes = node.SelectNodes("Field | Loop");
             if (loopChildNodes != null)
@@ -173,7 +184,7 @@ namespace MarketDataPlugin
                     if (loopChildNode.Name == "Field")
                     {
                         var loopFieldDef = ParseFieldDef(loopChildNode);
-                        loopDef.AddChild(loopFieldDef);
+                        loopDef.AddChild(loopFieldDef.Tag, loopFieldDef);
                     }
                 }
             }
@@ -181,24 +192,15 @@ namespace MarketDataPlugin
             return loopDef;
         }
 
-        public string BeginString { get; private set; }
-        public bool InMsgChecksum { get; private set; }
-        public bool OutMsgChecksum { get; private set; }
-        public int TimeZone { get; private set; }
-        private readonly List<IMessageDef> messages = new List<IMessageDef>();
-        private readonly List<ILoopDef> loops = new List<ILoopDef>();
-        public IReadOnlyList<IMessageDef> Messages => messages.AsReadOnly();
-        public IReadOnlyList<ILoopDef> Loops => loops.AsReadOnly();
-
         public Specs(string majorVersion, string minorVersion)
         {
             if (string.IsNullOrEmpty(majorVersion) || string.IsNullOrEmpty(minorVersion))
                 throw new ArgumentException("Major and minor versions must not be null or empty.");
 
             BeginString = $"FIX.{majorVersion}.{minorVersion}";
-            InMsgChecksum = false; // Giá trị mặc định
-            OutMsgChecksum = true; // Giá trị mặc định
-            TimeZone = 7; // Giá trị mặc định
+            InMsgChecksum = false;
+            OutMsgChecksum = true;
+            TimeZone = 7;
         }
 
         public DataDirection GetDirection(string directionStr)
