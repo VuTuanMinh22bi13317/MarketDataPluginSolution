@@ -20,7 +20,7 @@ namespace MarketDataPlugin
             if (string.IsNullOrEmpty(majorVersion) || string.IsNullOrEmpty(minorVersion))
                 throw new ArgumentException("Major and minor versions must not be null or empty.");
 
-            BeginString = $"FIX.{majorVersion}.{minorVersion}";
+            BeginString = "FIX.4.4";
             InMsgChecksum = false;
             OutMsgChecksum = true;
             TimeZone = 7;
