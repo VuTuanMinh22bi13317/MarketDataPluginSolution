@@ -23,9 +23,8 @@ namespace MarketDataPlugin.Parsers
             specs.DisplayHeader();
 
             Console.WriteLine("\nMessages:");
-            foreach (var msgEntry in specs.Messages)
+            foreach (var msg in specs.GetAllMessages())
             {
-                var msg = msgEntry.Value;
                 Console.WriteLine($"Message: Name={msg.Name}, MsgType={msg.MsgType}, Direction={msg.Direction}");
                 Console.WriteLine($"  Children Count: {msg.Children.Count}");
                 foreach (var childEntry in msg.Children)
@@ -35,7 +34,8 @@ namespace MarketDataPlugin.Parsers
                         string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
                             ? $", DateFormat={fieldDef.DateFormat}"
                             : "";
-                        Console.WriteLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
+                        string isLogDisplay = (msg.Name == "Header") ? $", IsLog={fieldDef.IsLog}" : "";
+                        Console.WriteLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}{dateFormatDisplay}{isLogDisplay}");
                     }
                     else if (childEntry.Value is LoopDef loopDef)
                     {
@@ -47,7 +47,7 @@ namespace MarketDataPlugin.Parsers
                                 string nestedDateFormatDisplay = nestedField.Type == FieldType.Date && !string.IsNullOrEmpty(nestedField.DateFormat)
                                     ? $", DateFormat={nestedField.DateFormat}"
                                     : "";
-                                Console.WriteLine($"    Nested FieldDef: Tag={nestedField.Tag}, Name={nestedField.Name}, Type={nestedField.Type}, DataField={nestedField.DataField}, IsLog={nestedField.IsLog}{nestedDateFormatDisplay}");
+                                Console.WriteLine($"    Nested FieldDef: Tag={nestedField.Tag}, Name={nestedField.Name}, Type={nestedField.Type}, DataField={nestedField.DataField}{nestedDateFormatDisplay}");
                             }
                         }
                     }

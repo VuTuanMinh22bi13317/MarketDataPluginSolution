@@ -14,9 +14,6 @@ namespace MarketDataPlugin
         public bool OutMsgChecksum { get; private set; } = true;
         public int TimeZone { get; private set; } = 7;
         private readonly Dictionary<string, MsgDef> messages = new Dictionary<string, MsgDef>();
-        private readonly Dictionary<string, LoopDef> loops = new Dictionary<string, LoopDef>();
-        public IReadOnlyDictionary<string, MsgDef> Messages => messages.AsReadOnly();
-        public IReadOnlyDictionary<string, LoopDef> Loops => loops.AsReadOnly();
 
         public void Load(string specsFile)
         {
@@ -104,7 +101,6 @@ namespace MarketDataPlugin
         private void ParseMessages(XmlDocument doc)
         {
             messages.Clear();
-            loops.Clear();
 
             var msgNodes = doc.SelectNodes("/Specs/Msg");
             if (msgNodes != null)
@@ -133,7 +129,6 @@ namespace MarketDataPlugin
                             {
                                 var loopDef = ParseLoopDef(childNode);
                                 msgDef.AddChild(loopDef.Tag, loopDef);
-                                loops[loopDef.Tag] = loopDef;
                             }
                         }
                     }
@@ -226,6 +221,17 @@ namespace MarketDataPlugin
 
             Console.WriteLine($"Warning: Unrecognized direction '{directionStr}', defaulting to DataDirection.In");
             return DataDirection.In;
+        }
+
+        // Thêm phương thức để truy cập messages nếu cần
+        public bool TryGetMessage(string msgType, out MsgDef? msgDef)
+        {
+            return messages.TryGetValue(msgType, out msgDef);
+        }
+
+        public IEnumerable<MsgDef> GetAllMessages()
+        {
+            return messages.Values;
         }
     }
 }
