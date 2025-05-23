@@ -1,4 +1,5 @@
 ﻿using MarketDataPlugin.Parsers;
+using System;
 
 namespace MarketDataPlugin
 {
@@ -7,10 +8,9 @@ namespace MarketDataPlugin
         static void Main(string[] args)
         {
             string specsFile = "C:/Users/Admin/MarketDataPluginSolution/MarketDataPlugin/Specs/MDDS-Specs.xml";
-
-            // Tạo và chạy SpecProcessor để xem định nghĩa
-            var processor = new SpecProcessor(specsFile, "4", "4");
-            processor.Process();
+            string folderPath = "C:/Users/Admin/Downloads/20250416 (1)/20250416";
+            var parser = new FixParser(specsFile, "4", "4");
+            parser.ParseFolder(folderPath);
         }
     }
 }

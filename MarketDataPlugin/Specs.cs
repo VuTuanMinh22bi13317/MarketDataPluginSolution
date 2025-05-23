@@ -24,7 +24,7 @@ namespace MarketDataPlugin
             InMsgChecksum = false;
             OutMsgChecksum = true;
             TimeZone = 7;
-            HeaderFields = new Dictionary<string, FieldDef>().AsReadOnly(); // Khởi tạo để tránh cảnh báo
+            HeaderFields = new Dictionary<string, FieldDef>().AsReadOnly();
         }
 
         public void Load(string specsFile)
@@ -51,14 +51,14 @@ namespace MarketDataPlugin
                 string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
                     ? $", DateFormat={fieldDef.DateFormat}"
                     : "";
-                Console.WriteLine($"    FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
+                Console.WriteLine($"    FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={(string.IsNullOrEmpty(fieldDef.DataField) ? "<empty>" : fieldDef.DataField)}, IsLog={fieldDef.IsLog}{dateFormatDisplay}");
             }
         }
 
         private string ReadXmlContent(string specsFile)
         {
             if (string.IsNullOrEmpty(specsFile) || !File.Exists(specsFile))
-                throw new ArgumentException("Invalid or missing XML file path.", nameof(specsFile));
+                throw new ArgumentException($"Invalid or missing XML file path: {specsFile}", nameof(specsFile));
 
             string xmlContent = File.ReadAllText(specsFile);
             if (string.IsNullOrWhiteSpace(xmlContent))
@@ -153,14 +153,23 @@ namespace MarketDataPlugin
             FieldType type;
             if (!Enum.TryParse(typeStr, true, out FieldType parsedType))
             {
-                Console.WriteLine($"Warning: Unrecognized Type '{typeStr}' for Field Tag={fieldTagValue}, Name={fieldName}. Defaulting to String.");
                 type = FieldType.String;
             }
             else
             {
                 type = parsedType;
             }
+
             string? dataField = node.Attributes?["DataField"]?.Value;
+            if (dataField == null)
+            {
+                dataField = node.Attributes?["dataField"]?.Value;
+            }
+            if (dataField == null)
+            {
+                dataField = node.Attributes?["DATAFIELD"]?.Value;
+            }
+
             bool isLog = bool.TryParse(node.Attributes?["IsLog"]?.Value, out bool log) ? log : false;
             string? dateFormat = null;
 
@@ -169,7 +178,9 @@ namespace MarketDataPlugin
                 dateFormat = node.Attributes?["DateFormat"]?.Value;
             }
 
-            return new FieldDef(fieldTagValue, fieldName, type, dataField, isLog, dateFormat);
+            bool isRequired = bool.TryParse(node.Attributes?["IsRequired"]?.Value, out bool required) ? required : false;
+
+            return new FieldDef(fieldTagValue, fieldName, type, dataField, isLog, dateFormat, isRequired);
         }
 
         private LoopDef ParseLoopDef(XmlNode node)
@@ -200,7 +211,6 @@ namespace MarketDataPlugin
         {
             if (string.IsNullOrEmpty(directionStr))
             {
-                Console.WriteLine("Warning: Direction string is null or empty, defaulting to DataDirection.In");
                 return DataDirection.In;
             }
 
@@ -217,7 +227,6 @@ namespace MarketDataPlugin
                 return direction;
             }
 
-            Console.WriteLine($"Warning: Unrecognized direction '{directionStr}', defaulting to DataDirection.In");
             return DataDirection.In;
         }
 

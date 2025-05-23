@@ -6,10 +6,11 @@
         public string Name { get; }
         public FieldType Type { get; }
         public string? DataField { get; }
-        public string? DateFormat { get; }
         public bool IsLog { get; }
+        public string? DateFormat { get; }
+        public bool IsRequired { get; }
 
-        public FieldDef(string tag, string name, FieldType type, string? dataField, bool isLog, string? dateFormat)
+        public FieldDef(string tag, string name, FieldType type, string? dataField, bool isLog, string? dateFormat, bool isRequired)
         {
             Tag = tag;
             Name = name;
@@ -17,6 +18,7 @@
             DataField = dataField;
             IsLog = isLog;
             DateFormat = dateFormat;
+            IsRequired = isRequired;
         }
     }
 }
