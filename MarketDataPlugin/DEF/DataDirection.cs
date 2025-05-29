@@ -1,11 +1,9 @@
-namespace MarketDataPlugin
+namespace MarketDataPlugin.DEF
 {
     public enum DataDirection
-    {   
-        In,
+    {
+        In = 0,
         Out,
-        Inbound,
-        Outbound,
-         // Added to fix CS0117
+        InOut
     }
 }

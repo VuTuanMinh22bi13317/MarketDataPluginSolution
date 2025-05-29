@@ -1,59 +1,153 @@
 using MarketDataPlugin;
+using MarketDataPlugin.DEF;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Xml;
 
 namespace MarketDataPlugin.Parsers
 {
     public class SpecProcessor
     {
-        private readonly Specs specs;
-
-        public SpecProcessor(string specsFile, string majorVersion, string minorVersion)
+        public Specs LoadSpecs(string specsFile, string majorVersion, string minorVersion)
         {
-            specs = new Specs(majorVersion, minorVersion);
-            specs.Load(specsFile);
-        }
+            if (string.IsNullOrEmpty(specsFile) || !File.Exists(specsFile))
+                throw new ArgumentException($"Invalid or missing XML file path: {specsFile}", nameof(specsFile));
 
-        public void Process()
-        {
-            Console.WriteLine("Processing Specs...");
-            Console.WriteLine($"BeginString: {specs.BeginString}");
-            Console.WriteLine($"InMsgChecksum: {specs.InMsgChecksum}");
-            Console.WriteLine($"OutMsgChecksum: {specs.OutMsgChecksum}");
-            Console.WriteLine($"TimeZone: {specs.TimeZone}");
+            string xmlContent = File.ReadAllText(specsFile);
+            if (string.IsNullOrWhiteSpace(xmlContent))
+                throw new InvalidOperationException("XML content is empty.");
 
-            specs.DisplayHeader();
+            XmlDocument doc = ParseXmlDocument(xmlContent);
+            var specsNode = doc.SelectSingleNode("/Specs");
+            if (specsNode == null)
+                throw new InvalidOperationException("Specs node not found in XML.");
 
-            Console.WriteLine("\nMessages:");
-            foreach (var msgDef in specs.GetAllMessages())
+            // Parse attributes
+            string beginString = specsNode.Attributes?["BeginString"]?.Value ?? $"FIX.{majorVersion}.{minorVersion}";
+            bool inMsgChecksum = bool.TryParse(specsNode.Attributes?["InMsgChecksum"]?.Value, out bool inChecksum) ? inChecksum : false;
+            bool outMsgChecksum = bool.TryParse(specsNode.Attributes?["OutMsgChecksum"]?.Value, out bool outChecksum) ? outChecksum : true;
+            int timeZone = int.TryParse(specsNode.Attributes?["TimeZone"]?.Value, out int tz) ? tz : 7;
+
+            // Parse header
+            var headerFields = new Dictionary<string, FieldDef>();
+            var headerNode = doc.SelectSingleNode("/Specs/Header");
+            if (headerNode != null)
             {
-                Console.WriteLine($"Message: Name={msgDef.Name}, MsgType={msgDef.MsgType}, Direction={msgDef.Direction}");
-                Console.WriteLine($"  Children Count: {msgDef.GetChildren().Count}");
-                foreach (var childEntry in msgDef.GetChildren())
+                var childNodes = headerNode.SelectNodes("Field");
+                if (childNodes != null)
                 {
-                    if (childEntry.Value is FieldDef fieldDef)
+                    foreach (XmlNode childNode in childNodes)
                     {
-                        string dateFormatDisplay = fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat)
-                            ? $", DateFormat={fieldDef.DateFormat}"
-                            : "";
-                        string isLogDisplay = (fieldDef.Tag == "8" || fieldDef.Tag == "9" || fieldDef.Tag == "35" || fieldDef.Tag == "49" ||
-                                              fieldDef.Tag == "56" || fieldDef.Tag == "34" || fieldDef.Tag == "52") ? $", IsLog={fieldDef.IsLog}" : "";
-                        Console.WriteLine($"  FieldDef: Tag={fieldDef.Tag}, Name={fieldDef.Name}, Type={fieldDef.Type}, DataField={fieldDef.DataField}{dateFormatDisplay}{isLogDisplay}");
+                        var fieldDef = ParseFieldDef(childNode);
+                        headerFields[fieldDef.Tag] = fieldDef;
                     }
-                    else if (childEntry.Value is LoopDef loopDef)
+                }
+            }
+
+            // Parse messages
+            var messages = new Dictionary<string, MsgDef>();
+            var msgNodes = doc.SelectNodes("/Specs/Msg");
+            if (msgNodes != null)
+            {
+                foreach (XmlNode msgNode in msgNodes)
+                {
+                    string name = msgNode.Attributes?["Name"]?.Value ?? "Unknown";
+                    string msgType = msgNode.Attributes?["MsgType"]?.Value ?? "Unknown";
+                    string directionStr = msgNode.Attributes?["Direction"]?.Value ?? "In";
+                    DataDirection direction = directionStr.ToLower() switch
                     {
-                        Console.WriteLine($"  LoopDef: Tag={loopDef.Tag}, Name={loopDef.Name}, Counter={loopDef.Counter}, Children Count={loopDef.GetChildren().Count}");
-                        foreach (var nestedChildEntry in loopDef.GetChildren())
+                        "in" => DataDirection.In,
+                        "out" => DataDirection.Out,
+                        "inout" => DataDirection.InOut,
+                        _ => DataDirection.In
+                    };
+
+                    var msgDef = new MsgDef(name, msgType, direction);
+                    messages[msgType] = msgDef;
+
+                    var childNodes = msgNode.SelectNodes("Field | Loop");
+                    if (childNodes != null)
+                    {
+                        foreach (XmlNode childNode in childNodes)
                         {
-                            if (nestedChildEntry.Value is FieldDef nestedField)
+                            if (childNode.Name == "Field")
                             {
-                                string nestedDateFormatDisplay = nestedField.Type == FieldType.Date && !string.IsNullOrEmpty(nestedField.DateFormat)
-                                    ? $", DateFormat={nestedField.DateFormat}"
-                                    : "";
-                                Console.WriteLine($"    Nested FieldDef: Tag={nestedField.Tag}, Name={nestedField.Name}, Type={nestedField.Type}, DataField={nestedField.DataField}{nestedDateFormatDisplay}");
+                                var fieldDef = ParseFieldDef(childNode);
+                                msgDef.AddChild(fieldDef.Tag, fieldDef);
+                            }
+                            else if (childNode.Name == "Loop")
+                            {
+                                var loopDef = ParseLoopDef(childNode);
+                                msgDef.AddChild(loopDef.Tag, loopDef);
                             }
                         }
                     }
                 }
             }
+
+            return new Specs(majorVersion, minorVersion, headerFields.AsReadOnly(), inMsgChecksum, outMsgChecksum, timeZone, messages.AsReadOnly())
+                ?? throw new ArgumentException("Failed to initialize specs.", nameof(specsFile));
+        }
+
+        private XmlDocument ParseXmlDocument(string xmlContent)
+        {
+            try
+            {
+                var doc = new XmlDocument();
+                doc.LoadXml(xmlContent);
+                return doc;
+            }
+            catch (XmlException ex)
+            {
+                throw new InvalidOperationException($"Failed to parse XML: {ex.Message} at Line {ex.LineNumber}, Position {ex.LinePosition}", ex);
+            }
+        }
+
+        private FieldDef ParseFieldDef(XmlNode node)
+        {
+            string fieldTagValue = node.Attributes?["Tag"]?.Value ?? "";
+            string fieldName = node.Attributes?["Name"]?.Value ?? "Unknown";
+            string typeStr = node.Attributes?["Type"]?.Value?.Trim() ?? "String";
+            FieldType type = Enum.TryParse(typeStr, true, out FieldType parsedType) ? parsedType : FieldType.String;
+
+            string? dataField = node.Attributes?["DataField"]?.Value
+                             ?? node.Attributes?["dataField"]?.Value
+                             ?? node.Attributes?["DATAFIELD"]?.Value
+                             ?? string.Empty;
+
+            bool isLog = bool.TryParse(node.Attributes?["IsLog"]?.Value, out bool log) ? log : false;
+            string? dateFormat = null;
+            if (type == FieldType.Date && node.Attributes?["DateFormat"] != null)
+                dateFormat = node.Attributes?["DateFormat"]?.Value;
+
+            bool isRequired = bool.TryParse(node.Attributes?["IsRequired"]?.Value, out bool required) ? required : false;
+
+            return new FieldDef(fieldTagValue, fieldName, type, dataField, isLog, dateFormat, isRequired);
+        }
+
+        private LoopDef ParseLoopDef(XmlNode node)
+        {
+            string loopTagValue = node.Attributes?["Tag"]?.Value ?? "";
+            string loopName = node.Attributes?["Name"]?.Value ?? "Unknown";
+            string counterValue = node.Attributes?["Counter"]?.Value ?? "";
+
+            var loopDef = new LoopDef(loopTagValue, loopName, counterValue);
+
+            var loopChildNodes = node.SelectNodes("Field | Loop");
+            if (loopChildNodes != null)
+            {
+                foreach (XmlNode loopChildNode in loopChildNodes)
+                {
+                    if (loopChildNode.Name == "Field")
+                    {
+                        var loopFieldDef = ParseFieldDef(loopChildNode);
+                        loopDef.AddChild(loopFieldDef.Tag, loopFieldDef);
+                    }
+                }
+            }
+
+            return loopDef;
         }
     }
 }

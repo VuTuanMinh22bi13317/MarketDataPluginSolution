@@ -12,5 +12,6 @@ namespace MarketDataPlugin
             var parser = new FixParser(specsFile, "4", "4");
             parser.ParseFolder(folderPath);
         }
+
     }
 }

@@ -2,10 +2,9 @@
 {
     public enum FieldType
     {
-        String,
-        Int,
-        Date,  // Đổi từ DateTime thành Date để khớp với XML
+        Int = 0,
         Double,
-        Boolean
+        String,
+        Date
     }
 }
