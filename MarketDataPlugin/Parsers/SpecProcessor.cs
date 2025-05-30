@@ -27,7 +27,8 @@ namespace MarketDataPlugin.Parsers
             string beginString = specsNode.Attributes?["BeginString"]?.Value ?? $"FIX.{majorVersion}.{minorVersion}";
             bool inMsgChecksum = bool.TryParse(specsNode.Attributes?["InMsgChecksum"]?.Value, out bool inChecksum) ? inChecksum : false;
             bool outMsgChecksum = bool.TryParse(specsNode.Attributes?["OutMsgChecksum"]?.Value, out bool outChecksum) ? outChecksum : true;
-            int timeZone = int.TryParse(specsNode.Attributes?["TimeZone"]?.Value, out int tz) ? tz : 7;
+            int timeZoneInt = int.TryParse(specsNode.Attributes?["TimeZone"]?.Value, out int tz) ? tz : 7;
+            string timeZone = $"UTC+{timeZoneInt}"; // Convert int to string (e.g., 7 -> "UTC+7")
 
             // Parse header
             var headerFields = new Dictionary<string, FieldDef>();

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Text;
+using MarketDataPlugin.DEF; // Added to resolve FieldDef reference
 
 namespace MarketDataPlugin
 {

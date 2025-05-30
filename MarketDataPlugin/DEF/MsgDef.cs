@@ -32,44 +32,67 @@ namespace MarketDataPlugin.DEF
 
     public static class MessageSplitter
     {
-        public static List<string> SplitMessages(string rawData, string expectedBeginString)
+        public static List<string> SplitMessages(Specs specs, string rawData, string expectedBeginString)
         {
             var messages = new List<string>();
             int index = 0;
 
+            Console.WriteLine($"Debug: Processing raw data of length {rawData.Length}");
+            Console.WriteLine($"Debug: Expected BeginString: 8={expectedBeginString}{specs.DelimiterChar}");
             while (index < rawData.Length)
             {
-                // Kiểm tra BeginString, nếu không đúng thì bỏ toàn bộ
-                string segment = rawData.Substring(index);
-                if (!segment.StartsWith($"8={expectedBeginString}{Specs.DELIMITER_CHAR}"))
-                    return new List<string>(); // Bỏ nếu BeginString không khớp
+                int beginIndex = rawData.IndexOf("8=", index);
+                if (beginIndex == -1)
+                {
+                    Console.WriteLine($"Debug: No more messages found after index {index}");
+                    break;
+                }
 
-                // Tìm tag 9 (BodyLength)
-                int bodyLength = GetBodyLength(rawData, index);
+                string segment = rawData.Substring(beginIndex).TrimStart(); // Trim leading whitespace/newlines
+                Console.WriteLine($"Debug: Checking segment at index {beginIndex}, starts with: {segment.Substring(0, Math.Min(15, segment.Length))}...");
+                if (!segment.StartsWith($"8={expectedBeginString}{specs.DelimiterChar}"))
+                {
+                    Console.WriteLine($"Debug: Segment at index {beginIndex} does not start with 8={expectedBeginString}{specs.DelimiterChar}, skipping.");
+                    index = beginIndex + 2;
+                    continue;
+                }
+
+                int bodyLength = GetBodyLength(specs, rawData, beginIndex);
+                Console.WriteLine($"Debug: Found BodyLength at index {beginIndex}: {bodyLength}");
                 if (bodyLength < 0)
-                    return new List<string>(); // Bỏ nếu không tìm thấy tag 9
+                {
+                    Console.WriteLine($"Debug: Invalid or missing BodyLength at index {beginIndex}, skipping.");
+                    index = beginIndex + 2;
+                    continue;
+                }
 
-                // Tính độ dài message (BodyLength + 6 cho tag 10 và delimiter)
-                int expectedEnd = index + bodyLength + 6; // 6 = "10=xxx" + delimiter
-                if (expectedEnd >= rawData.Length || !rawData.Substring(expectedEnd - 6, 6).StartsWith($"10="))
-                    return new List<string>(); // Bỏ nếu không có tag 10
+                int expectedEnd = beginIndex + bodyLength + 6;
+                Console.WriteLine($"Debug: Expected end at {expectedEnd}, checking for 10=");
+                if (expectedEnd > rawData.Length || !rawData.Substring(expectedEnd - 6, 6).StartsWith($"10="))
+                {
+                    Console.WriteLine($"Debug: No valid tag 10 at expected end {expectedEnd}, skipping.");
+                    index = beginIndex + 2;
+                    continue;
+                }
 
-                string message = rawData.Substring(index, expectedEnd - index);
+                string message = rawData.Substring(beginIndex, expectedEnd - beginIndex);
                 messages.Add(message);
+                Console.WriteLine($"Debug: Added message of length {message.Length}");
                 index = expectedEnd;
             }
 
+            Console.WriteLine($"Debug: Found {messages.Count} messages");
             return messages;
         }
 
-        private static int GetBodyLength(string rawData, int startIndex)
+        private static int GetBodyLength(Specs specs, string rawData, int startIndex)
         {
             int lengthStart = rawData.IndexOf($"9=", startIndex);
             if (lengthStart < 0)
                 return -1;
 
-            lengthStart += 2; // Bỏ qua "9="
-            int lengthEnd = rawData.IndexOf(Specs.DELIMITER_CHAR, lengthStart);
+            lengthStart += 2;
+            int lengthEnd = rawData.IndexOf(specs.DelimiterChar, lengthStart);
             if (lengthEnd < 0)
                 return -1;
 

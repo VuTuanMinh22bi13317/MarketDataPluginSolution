@@ -1,4 +1,6 @@
-﻿namespace MarketDataPlugin
+﻿using System;
+
+namespace MarketDataPlugin.DEF
 {
     public class FieldDef
     {

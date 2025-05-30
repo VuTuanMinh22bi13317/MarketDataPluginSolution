@@ -8,17 +8,19 @@ namespace MarketDataPlugin
 {
     public class Specs
     {
-        public const char DELIMITER_CHAR = (char)1;
+        public const char DEFAULT_DELIMITER_CHAR = (char)1; // SOH
+        public char DelimiterChar { get; }
 
         public IReadOnlyDictionary<string, FieldDef> HeaderFields { get; }
         public string BeginString { get; }
         public bool InMsgChecksum { get; }
         public bool OutMsgChecksum { get; }
-        public int TimeZone { get; }
+        public string TimeZone { get; } // Changed to string
         public IReadOnlyDictionary<string, MsgDef> Messages { get; }
 
         public Specs(string majorVersion, string minorVersion, IReadOnlyDictionary<string, FieldDef> headerFields,
-                     bool inMsgChecksum, bool outMsgChecksum, int timeZone, IReadOnlyDictionary<string, MsgDef> messages)
+                     bool inMsgChecksum, bool outMsgChecksum, string timeZone, IReadOnlyDictionary<string, MsgDef> messages,
+                     char? delimiterChar = null)
         {
             if (string.IsNullOrEmpty(majorVersion) || string.IsNullOrEmpty(minorVersion))
                 throw new ArgumentException("Major and minor versions must not be null or empty.");
@@ -27,8 +29,9 @@ namespace MarketDataPlugin
             HeaderFields = headerFields ?? new Dictionary<string, FieldDef>().AsReadOnly();
             InMsgChecksum = inMsgChecksum;
             OutMsgChecksum = outMsgChecksum;
-            TimeZone = timeZone;
+            TimeZone = timeZone ?? "UTC+7"; // Default to Vietnam timezone
             Messages = messages ?? new Dictionary<string, MsgDef>().AsReadOnly();
+            DelimiterChar = delimiterChar ?? DEFAULT_DELIMITER_CHAR;
         }
 
         public static Specs Load(string specsFile, string majorVersion, string minorVersion)
@@ -64,13 +67,11 @@ namespace MarketDataPlugin
                 throw new InvalidOperationException("Specs node not found in XML.");
             }
 
-            // Parse attributes
             string beginString = specsNode.Attributes?["BeginString"]?.Value ?? $"FIX.{majorVersion}.{minorVersion}";
             bool inMsgChecksum = bool.TryParse(specsNode.Attributes?["InMsgChecksum"]?.Value, out bool inChecksum) ? inChecksum : false;
             bool outMsgChecksum = bool.TryParse(specsNode.Attributes?["OutMsgChecksum"]?.Value, out bool outChecksum) ? outChecksum : true;
-            int timeZone = int.TryParse(specsNode.Attributes?["TimeZone"]?.Value, out int tz) ? tz : 7; // Default to +7 (Vietnam)
+            string timeZone = specsNode.Attributes?["TimeZone"]?.Value ?? "UTC+7";
 
-            // Parse header
             var headerFields = new Dictionary<string, FieldDef>();
             var headerNode = doc.SelectSingleNode("/Specs/Header");
             if (headerNode != null)
@@ -99,7 +100,6 @@ namespace MarketDataPlugin
                 }
             }
 
-            // Parse messages
             var messages = new Dictionary<string, MsgDef>();
             var msgNodes = doc.SelectNodes("/Specs/Msg");
             if (msgNodes != null)
