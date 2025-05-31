@@ -121,22 +121,32 @@ namespace MarketDataPlugin.Parsers
             var errors = new List<string>();
             var allSummaries = new List<MessageSummary>();
             var checksumResults = new List<bool>(); // Track checksum results for each message
-            var messageLogs = new List<string>(); // Store detailed logs for all messages
+            var logBatch = new List<string>(); // For batching log entries
+            const int batchSize = 100; // Write to file every 100 messages
 
             try
             {
-                string rawData = File.ReadAllText(filePath, Encoding.ASCII);
-                Console.WriteLine($"Processing raw data of length {rawData.Length} from file: {Path.GetFileName(filePath)}");
+                // Create parsed_log directory if it doesn't exist
+                string logsDir = @"C:\Users\Admin\MarketDataPluginSolution\parsed_log";
+                if (!Directory.Exists(logsDir))
+                {
+                    Directory.CreateDirectory(logsDir);
+                }
 
-                var messages = SplitMessages(rawData);
+                // Define log file path
+                string logFilePath = Path.Combine(logsDir, $"parsed_{Path.GetFileName(filePath)}.log");
+                Console.WriteLine($"Logging detailed messages to: {logFilePath}");
+
+                // Stream file reading and message extraction
+                var messages = StreamMessages(filePath).ToList();
+                Console.WriteLine($"Info: Extracted {messages.Count} messages from file: {Path.GetFileName(filePath)}");
+
                 if (!messages.Any())
                 {
                     errors.Add("No valid FIX messages found in file.");
                     Console.WriteLine($"Warning: No valid messages found in {Path.GetFileName(filePath)}.");
                     return new ParseResult(errors, null);
                 }
-
-                Console.WriteLine($"Info: Extracted {messages.Count} messages from raw data of length {rawData.Length}");
 
                 // Process all messages with progress indicator
                 for (int i = 0; i < messages.Count; i++)
@@ -149,11 +159,18 @@ namespace MarketDataPlugin.Parsers
                             Console.WriteLine($"Debug: Processing message {i + 1}/{messages.Count} from {Path.GetFileName(filePath)}");
                         }
 
-                        // Parse and log details to memory
+                        // Parse and append log entry to batch
                         string logEntry = ParseAndLogMessage(message, i + 1, errors);
                         if (!string.IsNullOrEmpty(logEntry))
                         {
-                            messageLogs.Add(logEntry);
+                            logBatch.Add(logEntry);
+                        }
+
+                        // Write batch to file if batch size is reached
+                        if (logBatch.Count >= batchSize || i == messages.Count - 1)
+                        {
+                            File.AppendAllLines(logFilePath, logBatch);
+                            logBatch.Clear();
                         }
 
                         var msgSummary = ParseMessage(message);
@@ -179,16 +196,6 @@ namespace MarketDataPlugin.Parsers
                     }
                 }
 
-                // Create parsed_log directory if it doesn't exist
-                string logsDir = @"C:\Users\Admin\MarketDataPluginSolution\parsed_log";
-                if (!Directory.Exists(logsDir))
-                {
-                    Directory.CreateDirectory(logsDir);
-                }
-
-                // Save detailed logs to file in the parsed_log directory
-                string logFilePath = Path.Combine(logsDir, $"parsed_{Path.GetFileName(filePath)}.log");
-                File.WriteAllLines(logFilePath, messageLogs);
                 Console.WriteLine($"Detailed logs saved to: {logFilePath}");
 
                 // Aggregate summary from all valid results
@@ -210,13 +217,6 @@ namespace MarketDataPlugin.Parsers
                     Console.WriteLine($"Debug: CheckSum validation: {allChecksumsValid}");
                 }
 
-                // Check for partial message at the end
-                int lastBeginIndex = rawData.LastIndexOf($"8={specs.BeginString}");
-                if (lastBeginIndex >= 0 && lastBeginIndex + 2 < rawData.Length)
-                {
-                    Console.WriteLine($"Warning: No BeginString found after index {lastBeginIndex}, possible partial message at end of data (length: {rawData.Length}).");
-                }
-
                 return new ParseResult(errors, allSummaries.FirstOrDefault());
             }
             catch (Exception ex)
@@ -232,95 +232,95 @@ namespace MarketDataPlugin.Parsers
             }
         }
 
+        private IEnumerable<string> StreamMessages(string filePath)
+        {
+            using var reader = new StreamReader(filePath, Encoding.ASCII);
+            var messageBuilder = new StringBuilder();
+            long totalBytesRead = 0;
+            long fileSize = new FileInfo(filePath).Length;
+            string beginString = $"8={specs.BeginString}";
+            string bodyLengthTag = "9=";
+            string checksumTag = "10=";
+
+            while (!reader.EndOfStream)
+            {
+                string line = reader.ReadLine();
+                if (line == null) break;
+
+                totalBytesRead += Encoding.ASCII.GetByteCount(line) + 2; // +2 for \r\n
+                messageBuilder.Append(line).Append(specs.DelimiterChar);
+
+                // Find the start of a message
+                string currentData = messageBuilder.ToString();
+                int beginIndex = currentData.IndexOf(beginString, StringComparison.Ordinal);
+                if (beginIndex < 0) continue;
+
+                // Find BodyLength
+                int bodyLengthStart = currentData.IndexOf(bodyLengthTag, beginIndex, StringComparison.Ordinal) + 2;
+                if (bodyLengthStart < 2) continue;
+
+                int bodyLengthEnd = currentData.IndexOf(specs.DelimiterChar, bodyLengthStart);
+                if (bodyLengthEnd < 0) continue;
+
+                string bodyLengthStr = currentData.Substring(bodyLengthStart, bodyLengthEnd - bodyLengthStart);
+                if (!int.TryParse(bodyLengthStr, out int bodyLength) || bodyLength <= 0)
+                {
+                    Console.WriteLine($"Error: Invalid BodyLength {bodyLengthStr} at byte {totalBytesRead}, skipping.");
+                    messageBuilder.Clear();
+                    continue;
+                }
+
+                int headerEnd = bodyLengthEnd + 1;
+                int bodyEnd = headerEnd + bodyLength;
+                int checksumStart = currentData.IndexOf(checksumTag, bodyEnd, StringComparison.Ordinal);
+                if (checksumStart < 0) continue;
+
+                int messageEnd = checksumStart + 6; // "10=xxx|" (5 chars + delimiter)
+                if (messageEnd > currentData.Length)
+                {
+                    // Need more data to complete the message
+                    continue;
+                }
+
+                string message = currentData.Substring(beginIndex, messageEnd - beginIndex);
+                yield return message;
+
+                // Remove the processed message from the builder
+                messageBuilder.Remove(0, messageEnd);
+            }
+
+            if (messageBuilder.Length > 0)
+            {
+                Console.WriteLine($"Warning: Possible partial message at end of file (length: {messageBuilder.Length} bytes).");
+            }
+        }
+
         private string ParseAndLogMessage(string message, int messageNumber, List<string> errors)
         {
-            var logLines = new List<string>();
+            var sb = new StringBuilder();
 
             // Log the raw message
-            logLines.Add($"Message {messageNumber}: {message}");
+            sb.AppendLine($"Message {messageNumber}: {message}");
 
             // Extract and log MsgType
             string? msgType = GetMsgType(message);
             if (string.IsNullOrEmpty(msgType))
             {
                 errors.Add($"Failed to extract MsgType from message {messageNumber}");
-                return null;
+                return string.Empty;
             }
-            logLines.Add($"MsgType: {msgType}");
+            sb.AppendLine($"MsgType: {msgType}");
 
             // Extract and log tags with values
             var tagValuePairs = message.Split(new[] { specs.DelimiterChar }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(f => f.Split('='))
-                .Where(parts => parts.Length == 2)
-                .Select(parts => new { Tag = parts[0], Value = parts[1] });
+                .Where(parts => parts.Length == 2);
             foreach (var pair in tagValuePairs)
             {
-                logLines.Add($"Tags: {pair.Tag} = {pair.Value}");
+                sb.AppendLine($"Tags: {pair[0]} = {pair[1]}");
             }
 
-            return string.Join(Environment.NewLine, logLines);
-        }
-
-        private List<string> SplitMessages(string rawData)
-        {
-            List<string> messages = new List<string>();
-            int index = 0;
-
-            while (index < rawData.Length)
-            {
-                int beginIndex = rawData.IndexOf($"8={specs.BeginString}", index);
-                if (beginIndex < 0)
-                {
-                    if (index < rawData.Length)
-                    {
-                        Console.WriteLine($"Warning: No BeginString found after index {index}, possible partial message at end of data (length: {rawData.Length}).");
-                    }
-                    break;
-                }
-
-                int bodyLengthStart = rawData.IndexOf("9=", beginIndex) + 2;
-                if (bodyLengthStart < 2 || bodyLengthStart >= rawData.Length)
-                {
-                    Console.WriteLine($"Error: Invalid BodyLength start at index {beginIndex}, discarding data from index {index}.");
-                    break;
-                }
-
-                int bodyLengthEnd = rawData.IndexOf(specs.DelimiterChar, bodyLengthStart);
-                if (bodyLengthEnd < 0)
-                {
-                    Console.WriteLine($"Error: No delimiter after BodyLength at index {bodyLengthStart}, discarding data from index {index}.");
-                    break;
-                }
-
-                string bodyLengthStr = rawData.Substring(bodyLengthStart, bodyLengthEnd - bodyLengthStart);
-                if (!int.TryParse(bodyLengthStr, out int bodyLength) || bodyLength <= 0)
-                {
-                    Console.WriteLine($"Error: Invalid BodyLength {bodyLengthStr} at index {beginIndex}, discarding data from index {index}.");
-                    break;
-                }
-
-                int headerEnd = bodyLengthEnd + 1;
-                int bodyEnd = headerEnd + bodyLength;
-                int checksumStart = rawData.IndexOf("10=", bodyEnd);
-                if (checksumStart < 0 || checksumStart >= rawData.Length - 6) // Ensure room for "10=xxx|"
-                {
-                    Console.WriteLine($"Error: No valid CheckSum at expected end near {bodyEnd}, discarding data from index {index}.");
-                    break;
-                }
-
-                int messageEnd = checksumStart + 6; // "10=xxx|" (5 chars + delimiter)
-                if (messageEnd > rawData.Length)
-                {
-                    Console.WriteLine($"Warning: Message end {messageEnd} exceeds data length {rawData.Length}, truncating at {rawData.Length}.");
-                    messageEnd = rawData.Length;
-                }
-
-                string message = rawData.Substring(beginIndex, messageEnd - beginIndex);
-                messages.Add(message);
-                index = messageEnd;
-            }
-
-            return messages;
+            return sb.ToString();
         }
 
         private MessageSummary? ParseMessage(string message)
@@ -340,34 +340,36 @@ namespace MarketDataPlugin.Parsers
             Msg msg = new Msg(specs, message);
             var fields = new List<MessageField>();
             var loops = new List<List<MessageField>>();
-            int loopStartTag = -1; // Tag to start a loop (e.g., 83)
             List<MessageField> currentLoop = null;
 
+            // Store all tag-value pairs as a list to handle duplicates (repeating groups)
             var fieldPairs = message.Split(new[] { specs.DelimiterChar }, StringSplitOptions.RemoveEmptyEntries)
                 .Select(f => f.Split('='))
                 .Where(parts => parts.Length == 2)
-                .ToDictionary(parts => parts[0], parts => parts[1]);
+                .Select(parts => (Tag: parts[0], Value: parts[1]))
+                .ToList();
 
+            // Process each field defined in the message definition
             foreach (var child in msgDef.GetChildren())
             {
                 string tag = child.Key;
                 if (child.Value is FieldDef fieldDef)
                 {
-                    string? rawValue = fieldPairs.ContainsKey(tag) ? fieldPairs[tag] : null;
+                    // Find the first occurrence of the tag (or all occurrences for repeating groups)
+                    string? rawValue = fieldPairs.FirstOrDefault(p => p.Tag == tag).Value;
                     string? dateFormat = dateFormats.TryGetValue($"{msgType}:{tag}", out var df) ? df : null;
                     object parsedValue = ParseFieldValue(rawValue, fieldDef.Type, dateFormat);
-                    if (tag == "83" && currentLoop != null)
+
+                    if (tag == "83")
                     {
-                        loops.Add(currentLoop);
+                        // Start of a repeating group
+                        if (currentLoop != null && currentLoop.Any())
+                        {
+                            loops.Add(currentLoop);
+                        }
                         currentLoop = new List<MessageField>();
-                    }
-                    else if (tag == "83")
-                    {
-                        loopStartTag = 83;
-                        currentLoop = new List<MessageField>();
-                    }
-                    else if (loopStartTag >= 0 && currentLoop != null)
-                    {
+
+                        // Add the NoRpts field itself
                         currentLoop.Add(new MessageField
                         {
                             Tag = tag,
@@ -377,9 +379,51 @@ namespace MarketDataPlugin.Parsers
                             DataField = fieldDef.DataField,
                             ParsedValue = parsedValue
                         });
+
+                        // Parse the number of repeats
+                        if (int.TryParse(rawValue, out int numRepeats) && numRepeats > 0)
+                        {
+                            // Find the starting index of this tag
+                            int startIndex = fieldPairs.FindIndex(p => p.Tag == "83") + 1;
+                            if (startIndex <= 0 || startIndex >= fieldPairs.Count) continue;
+
+                            // Process the repeating group
+                            int fieldsProcessed = 0;
+                            for (int i = startIndex; i < fieldPairs.Count && fieldsProcessed < numRepeats * msgDef.GetChildren().Count; i++)
+                            {
+                                var pair = fieldPairs[i];
+                                // Check if we've hit another group or the end of the message
+                                if (pair.Tag == "83" || pair.Tag == "10") break;
+
+                                // Find the field definition for this tag
+                                var groupFieldDef = msgDef.GetChildren().FirstOrDefault(c => c.Key == pair.Tag).Value as FieldDef;
+                                if (groupFieldDef == null) continue;
+
+                                string? groupDateFormat = dateFormats.TryGetValue($"{msgType}:{pair.Tag}", out var gdf) ? gdf : null;
+                                object groupParsedValue = ParseFieldValue(pair.Value, groupFieldDef.Type, groupDateFormat);
+
+                                currentLoop.Add(new MessageField
+                                {
+                                    Tag = pair.Tag,
+                                    Name = groupFieldDef.Name ?? $"Field_{pair.Tag}",
+                                    Value = groupParsedValue?.ToString() ?? string.Empty,
+                                    Type = groupFieldDef.Type.ToString(),
+                                    DataField = groupFieldDef.DataField,
+                                    ParsedValue = groupParsedValue
+                                });
+
+                                fieldsProcessed++;
+                            }
+                        }
+                    }
+                    else if (currentLoop != null)
+                    {
+                        // Already in a repeating group, skip adding to fields (handled above)
+                        continue;
                     }
                     else
                     {
+                        // Regular field outside of a repeating group
                         fields.Add(new MessageField
                         {
                             Tag = tag,
