@@ -356,7 +356,8 @@ namespace MarketDataPlugin.Parsers
                 if (child.Value is FieldDef fieldDef)
                 {
                     // Find the first occurrence of the tag (or all occurrences for repeating groups)
-                    string? rawValue = fieldPairs.FirstOrDefault(p => p.Tag == tag).Value;
+                    var pair = fieldPairs.FirstOrDefault(p => p.Tag == tag);
+                    string? rawValue = pair.Value;
                     string? dateFormat = dateFormats.TryGetValue($"{msgType}:{tag}", out var df) ? df : null;
                     object parsedValue = ParseFieldValue(rawValue, fieldDef.Type, dateFormat);
 
@@ -391,22 +392,22 @@ namespace MarketDataPlugin.Parsers
                             int fieldsProcessed = 0;
                             for (int i = startIndex; i < fieldPairs.Count && fieldsProcessed < numRepeats * msgDef.GetChildren().Count; i++)
                             {
-                                var pair = fieldPairs[i];
+                                var groupPair = fieldPairs[i];
                                 // Check if we've hit another group or the end of the message
-                                if (pair.Tag == "83" || pair.Tag == "10") break;
+                                if (groupPair.Tag == "83" || groupPair.Tag == "10") break;
 
                                 // Find the field definition for this tag
-                                var groupFieldDef = msgDef.GetChildren().FirstOrDefault(c => c.Key == pair.Tag).Value as FieldDef;
+                                var groupFieldDef = msgDef.GetChildren().FirstOrDefault(c => c.Key == groupPair.Tag).Value as FieldDef;
                                 if (groupFieldDef == null) continue;
 
-                                string? groupDateFormat = dateFormats.TryGetValue($"{msgType}:{pair.Tag}", out var gdf) ? gdf : null;
-                                object groupParsedValue = ParseFieldValue(pair.Value, groupFieldDef.Type, groupDateFormat);
+                                string? groupDateFormat = dateFormats.TryGetValue($"{msgType}:{groupPair.Tag}", out var gdf) ? gdf : null;
+                                object groupParsedValue = ParseFieldValue(groupPair.Value, groupFieldDef.Type, groupDateFormat);
 
                                 currentLoop.Add(new MessageField
                                 {
-                                    Tag = pair.Tag,
-                                    Name = groupFieldDef.Name ?? $"Field_{pair.Tag}",
-                                    Value = groupParsedValue?.ToString() ?? string.Empty,
+                                    Tag = groupPair.Tag,
+                                    Name = groupFieldDef.Name ?? $"Field_{groupPair.Tag}",
+                                    Value = groupFieldDef.Type == FieldType.Date ? groupParsedValue?.ToString() ?? string.Empty : groupPair.Value,
                                     Type = groupFieldDef.Type.ToString(),
                                     DataField = groupFieldDef.DataField,
                                     ParsedValue = groupParsedValue
@@ -428,7 +429,7 @@ namespace MarketDataPlugin.Parsers
                         {
                             Tag = tag,
                             Name = fieldDef.Name ?? $"Field_{tag}",
-                            Value = parsedValue?.ToString() ?? string.Empty,
+                            Value = fieldDef.Type == FieldType.Date ? parsedValue?.ToString() ?? string.Empty : rawValue,
                             Type = fieldDef.Type.ToString(),
                             DataField = fieldDef.DataField,
                             ParsedValue = parsedValue
