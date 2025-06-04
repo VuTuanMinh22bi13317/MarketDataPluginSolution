@@ -2,22 +2,24 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Xml;
-using MarketDataPlugin.DEF;
+using MarketDataPlugin.DEF; // For FieldDef, MsgDef, LoopDef, DataDirection, FieldType
 
 namespace MarketDataPlugin
 {
+    // Holds configuration settings for parsing FIX messages
     public class Specs
     {
-        public const char DEFAULT_DELIMITER_CHAR = (char)1; // SOH
-        public char DelimiterChar { get; }
+        public const char DEFAULT_DELIMITER_CHAR = (char)1; // SOH character as default delimiter
 
-        public IReadOnlyDictionary<string, FieldDef> HeaderFields { get; }
-        public string BeginString { get; }
-        public bool InMsgChecksum { get; }
-        public bool OutMsgChecksum { get; }
-        public string TimeZone { get; } // Changed to string
-        public IReadOnlyDictionary<string, MsgDef> Messages { get; }
+        public char DelimiterChar { get; } // Delimiter character for FIX messages
+        public IReadOnlyDictionary<string, FieldDef> HeaderFields { get; } // Header fields definitions
+        public string BeginString { get; } // FIX version string (e.g., FIX.4.2)
+        public bool InMsgChecksum { get; } // Flag for incoming message checksum validation
+        public bool OutMsgChecksum { get; } // Flag for outgoing message checksum validation
+        public string TimeZone { get; } // Timezone for date/time fields
+        public IReadOnlyDictionary<string, MsgDef> Messages { get; } // Message definitions
 
+        // Creates a new Specs instance with the given settings
         public Specs(string majorVersion, string minorVersion, IReadOnlyDictionary<string, FieldDef> headerFields,
                      bool inMsgChecksum, bool outMsgChecksum, string timeZone, IReadOnlyDictionary<string, MsgDef> messages,
                      char? delimiterChar = null)
@@ -34,6 +36,7 @@ namespace MarketDataPlugin
             DelimiterChar = delimiterChar ?? DEFAULT_DELIMITER_CHAR;
         }
 
+        // Loads specs from an XML file
         public static Specs Load(string specsFile, string majorVersion, string minorVersion)
         {
             if (string.IsNullOrEmpty(specsFile) || !File.Exists(specsFile))
@@ -147,7 +150,8 @@ namespace MarketDataPlugin
                                 string loopName = childNode.Attributes?["Name"]?.Value ?? "Unknown";
                                 string counter = childNode.Attributes?["Counter"]?.Value ?? "";
 
-                                var loopDef = new LoopDef(tag, loopName, counter);
+                                var children = new Dictionary<string, FieldDef>(); // Initialize dictionary for child fields
+                                var loopDef = new LoopDef(counter, loopName, children); // Pass dictionary instead of counter
                                 var loopChildNodes = childNode.SelectNodes("Field");
                                 if (loopChildNodes != null)
                                 {
@@ -170,7 +174,7 @@ namespace MarketDataPlugin
                                         loopDef.AddChild(loopTag, new FieldDef(loopTag, loopFieldName, loopType, loopDataField, loopIsLog, loopDateFormat, loopIsRequired));
                                     }
                                 }
-                                msgDef.AddChild(tag, loopDef);
+                                msgDef.AddChild(counter, loopDef); // Use counter instead of tag to align with LoopDef's Counter property
                             }
                         }
                     }

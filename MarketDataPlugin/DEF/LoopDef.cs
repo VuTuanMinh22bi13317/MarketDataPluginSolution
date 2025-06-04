@@ -1,30 +1,49 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 
 namespace MarketDataPlugin.DEF
 {
+    // LoopDef class defines the structure of a repeating group (loop) in a FIX message.
+    // It stores the loop counter, name, and child fields.
     public class LoopDef
     {
-        public string Tag { get; }
-        public string Name { get; }
-        public string? Counter { get; }
-        private readonly Dictionary<string, FieldDef> children = new Dictionary<string, FieldDef>();
+        public string? Counter { get; set; } // The tag that indicates the start of a loop (e.g., "83")
+        public string Name { get; set; } = string.Empty; // Name of the loop, initialized to avoid null warnings
+        public Dictionary<string, FieldDef> Children { get; } = new Dictionary<string, FieldDef>(); // Child fields within the loop
 
-        public LoopDef(string tag, string name, string? counter)
+        // Constructor: Initializes a LoopDef with a counter, name, and child fields.
+        // Parameters:
+        // - counter: The tag that starts the loop.
+        // - name: The name of the loop.
+        // - children: Dictionary of child fields (tag to FieldDef mapping).
+        public LoopDef(string counter, string name, Dictionary<string, FieldDef> children)
         {
-            Tag = tag;
-            Name = name;
             Counter = counter;
+            Name = name;
+            foreach (var child in children)
+            {
+                Children.Add(child.Key, child.Value);
+            }
         }
 
-        public void AddChild(string tag, FieldDef field)
+        // AddChild: Adds a child field to the loop if it doesn't already exist.
+        // Parameters:
+        // - key: The tag of the child field.
+        // - child: The FieldDef object for the child field.
+        public void AddChild(string key, FieldDef child)
         {
-            children[tag] = field;
+            if (!Children.ContainsKey(key)) Children.Add(key, child);
         }
 
-        public IReadOnlyDictionary<string, FieldDef> GetChildren()
+        // GetChildren: Returns the child fields as a dictionary of objects.
+        // Returns: A dictionary mapping tags to child field definitions.
+        public Dictionary<string, object> GetChildren()
         {
-            return children.AsReadOnly();
+            var result = new Dictionary<string, object>();
+            foreach (var child in Children)
+            {
+                result.Add(child.Key, child.Value);
+            }
+            return result;
         }
     }
 }

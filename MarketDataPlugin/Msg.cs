@@ -1,312 +1,288 @@
-﻿using MarketDataPlugin.DEF;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Text;
+using MarketDataPlugin;
+using MarketDataPlugin.DEF;
+using System.Globalization;
 
 namespace MarketDataPlugin
 {
     public class Msg
     {
         private readonly Specs specs;
-        private readonly MsgDef? msgDef;
-        private readonly ParseResult result = new ParseResult();
-        private readonly List<KeyValuePair<string, string>> fieldList;
+        private readonly Dictionary<string, MsgDef> msgDefs;
+        private readonly Dictionary<string, string> dateFormats;
 
-        public Msg(Specs specs, string rawMessage)
+        public Msg(Specs specs, Dictionary<string, MsgDef> msgDefs, Dictionary<string, string> dateFormats)
         {
             this.specs = specs ?? throw new ArgumentNullException(nameof(specs));
-            this.fieldList = ParseRawMessage(rawMessage);
+            this.msgDefs = msgDefs ?? throw new ArgumentNullException(nameof(msgDefs));
+            this.dateFormats = dateFormats ?? throw new ArgumentNullException(nameof(dateFormats));
+        }
 
-            if (!fieldList.Any())
+        public ParseResult Parse(string rawMessage)
+        {
+            var errors = new List<string>();
+            if (string.IsNullOrEmpty(rawMessage))
             {
-                result.AddError("Error: No fields parsed from raw message.");
-                return;
+                errors.Add("Empty message");
+                return new ParseResult(errors, null);
             }
 
-            // Extract MsgType (Tag 35)
-            var msgTypeField = fieldList.FirstOrDefault(f => f.Key == "35");
-            if (msgTypeField.Key == null || string.IsNullOrEmpty(msgTypeField.Value) || !specs.Messages.TryGetValue(msgTypeField.Value, out msgDef))
+            var fields = new List<MessageField>();
+            var loops = new List<List<MessageField>>();
+            var unparsedFields = new List<string>();
+            int messageLength = rawMessage.Length;
+
+            if (!rawMessage.StartsWith($"8={specs.BeginString}" + specs.DelimiterChar))
             {
-                result.AddError($"Error: Invalid or undefined MsgType: {msgTypeField.Value ?? "null"}.");
-                return;
+                errors.Add($"Invalid BeginString: Expected '8={specs.BeginString}', got '{rawMessage.Substring(0, Math.Min(10, rawMessage.Length))}'");
+                return new ParseResult(errors, null);
             }
 
-            // Validate BodyLength (Tag 9)
-            var lengthField = fieldList.FirstOrDefault(f => f.Key == "9");
-            if (lengthField.Key == null || !int.TryParse(lengthField.Value, out int bodyLength))
+            string? msgType = GetMsgType(rawMessage);
+            if (string.IsNullOrEmpty(msgType))
             {
-                result.AddError("Error: Invalid or missing BodyLength (Tag 9).");
-                return;
+                errors.Add("Invalid MsgType: Could not extract MsgType (tag 35)");
+                return new ParseResult(errors, null);
             }
 
-            int calculatedLength = CalculateMessageLength();
-            if (bodyLength != calculatedLength)
+            if (!msgDefs.TryGetValue(msgType, out MsgDef? msgDef))
             {
-                result.AddError($"Error: BodyLength mismatch. Expected {bodyLength}, calculated {calculatedLength}.");
-                return;
+                errors.Add($"Invalid MsgType: '{msgType}' not found in message definitions");
+                return new ParseResult(errors, null);
             }
 
-            // Parse fields and loops
-            ParseFieldsAndLoops();
+            string[] fieldPairs = rawMessage.Split(specs.DelimiterChar);
+            bool checkSumPassed = !specs.InMsgChecksum || VerifyCheckSum(rawMessage, fieldPairs);
 
-            // Validate CheckSum (Tag 10) if required
-            if (specs.InMsgChecksum)
+            // Parse header and body fields
+            for (int i = 0; i < fieldPairs.Length; i++)
             {
-                var checksumField = fieldList.FirstOrDefault(f => f.Key == "10");
-                if (checksumField.Key != null)
+                string pair = fieldPairs[i];
+                int equalsIndex = pair.IndexOf('=');
+                if (equalsIndex > 0)
                 {
-                    int trailerIdx = rawMessage.LastIndexOf($"10{specs.DelimiterChar}");
-                    if (trailerIdx >= 0)
+                    string tag = pair.Substring(0, equalsIndex);
+                    string value = pair.Substring(equalsIndex + 1);
+                    if (specs.HeaderFields.TryGetValue(tag, out FieldDef? headerField))
                     {
-                        string messageWithoutChecksum = rawMessage.Substring(0, trailerIdx);
-                        int calculatedChecksum = CalculateCheckSum(messageWithoutChecksum);
-                        if (!int.TryParse(checksumField.Value, out int providedChecksum) || calculatedChecksum != providedChecksum)
+                        var field = ParseField(tag, value, headerField, msgType);
+                        fields.Add(field);
+                    }
+                    else if (msgDef.GetChildren().TryGetValue(tag, out object? childObj))
+                    {
+                        if (childObj is FieldDef fieldDef)
                         {
-                            result.AddError($"Error: CheckSum mismatch. Expected: {providedChecksum}, Calculated: {calculatedChecksum}.");
-                            return;
+                            var field = ParseField(tag, value, fieldDef, msgType);
+                            fields.Add(field);
                         }
-                        Console.WriteLine($"Debug: CheckSum - Expected: {providedChecksum}, Calculated: {calculatedChecksum}, Passed: True");
+                        // We'll handle loops separately below
                     }
-                }
-                else
-                {
-                    result.AddError("Error: Missing CheckSum (Tag 10).");
-                    return;
-                }
-            }
-
-            // Initialize MessageSummary with pre-populated fields
-            result.MessageSummary = new MessageSummary
-            {
-                MsgType = msgTypeField.Value,
-                MsgName = msgDef?.Name,
-                TotalFields = result.MessageFields.Count + (result.Loops?.Sum(l => l.Count) ?? 0),
-                // Use the existing MessageFields and Loops from result
-                // No assignment to MessageFields needed since it’s read-only and pre-populated
-            };
-            result.MessageSummary.MessageFields.AddRange(result.MessageFields); // Copy fields to MessageSummary
-            result.MessageSummary.Loops = result.Loops; // Assign Loops (nullable, so this is fine)
-        }
-
-        private List<KeyValuePair<string, string>> ParseRawMessage(string rawMessage)
-        {
-            var fields = new List<KeyValuePair<string, string>>();
-            int index = 0;
-
-            while (index < rawMessage.Length)
-            {
-                int eqIdx = rawMessage.IndexOf('=', index);
-                if (eqIdx < 0 || eqIdx >= rawMessage.Length - 1) break;
-
-                string tag = rawMessage.Substring(index, eqIdx - index);
-                int nextDelimIdx = rawMessage.IndexOf(specs.DelimiterChar, eqIdx + 1);
-                if (nextDelimIdx < 0) nextDelimIdx = rawMessage.Length;
-
-                string value = rawMessage.Substring(eqIdx + 1, nextDelimIdx - eqIdx - 1);
-                fields.Add(new KeyValuePair<string, string>(tag, value));
-                index = nextDelimIdx + 1;
-            }
-
-            return fields;
-        }
-
-        private int CalculateMessageLength()
-        {
-            int length = 0;
-            bool afterBodyLength = false;
-            foreach (var field in fieldList)
-            {
-                if (field.Key == "9")
-                {
-                    afterBodyLength = true;
-                    continue;
-                }
-                if (field.Key == "10") break;
-                if (afterBodyLength)
-                    length += field.Key.Length + 1 + field.Value.Length + 1; // Tag + '=' + Value + Delimiter
-            }
-            return length;
-        }
-
-        private void ParseFieldsAndLoops()
-        {
-            var remainingFields = new List<KeyValuePair<string, string>>(fieldList);
-            string? loopStartTag = null;
-
-            // Find loop start tag
-            if (msgDef != null)
-            {
-                foreach (var child in msgDef.GetChildren())
-                {
-                    if (child.Value is LoopDef loopDef)
+                    else if (tag == "10")
                     {
-                        loopStartTag = loopDef.Tag;
-                        break;
+                        // Trailer field, no action needed
+                    }
+                    else
+                    {
+                        unparsedFields.Add(pair);
                     }
                 }
             }
 
-            // Parse header fields
-            foreach (var headerField in specs.HeaderFields)
+            // Parse loops
+            var loopFieldsDict = new Dictionary<string, object>();
+            foreach (var child in msgDef.GetChildren())
             {
-                var field = remainingFields.FirstOrDefault(f => f.Key == headerField.Value.Tag);
-                if (field.Key != null)
+                if (child.Value is LoopDef loopDef)
                 {
-                    var parsedValue = ParseFieldValue(headerField.Value, field.Value);
-                    result.MessageFields.Add(new FieldOutput
+                    string counterTag = loopDef.Counter;
+                    int counterIndex = Array.FindIndex(fieldPairs, p => p.StartsWith($"{counterTag}="));
+                    if (counterIndex >= 0)
                     {
-                        Tag = headerField.Value.Tag,
-                        Name = headerField.Value.Name,
-                        Value = parsedValue,
-                        Type = headerField.Value.Type.ToString(),
-                        DataField = headerField.Value.DataField,
-                        IsLog = headerField.Value.IsLog
-                    });
-                    remainingFields.Remove(field);
-                }
-                else if (headerField.Value.IsRequired)
-                {
-                    result.AddError($"Error: Required header field {headerField.Value.Tag} ({headerField.Value.Name}) not found.");
-                }
-            }
-
-            // Parse body fields and loops
-            List<FieldOutput>? currentLoop = null;
-
-            if (msgDef != null)
-            {
-                foreach (var child in msgDef.GetChildren())
-                {
-                    if (child.Value is FieldDef fieldDef)
-                    {
-                        var field = remainingFields.FirstOrDefault(f => f.Key == fieldDef.Tag);
-                        if (field.Key != null && field.Key != loopStartTag)
+                        string counterPair = fieldPairs[counterIndex];
+                        string counterValue = counterPair.Substring(counterPair.IndexOf('=') + 1);
+                        if (int.TryParse(counterValue, out int loopCount))
                         {
-                            var parsedValue = ParseFieldValue(fieldDef, field.Value);
-                            result.MessageFields.Add(new FieldOutput
+                            int currentIndex = counterIndex + 1;
+                            for (int loopEntry = 0; loopEntry < loopCount && currentIndex < fieldPairs.Length; loopEntry++)
                             {
-                                Tag = fieldDef.Tag,
-                                Name = fieldDef.Name,
-                                Value = parsedValue,
-                                Type = fieldDef.Type.ToString(),
-                                DataField = fieldDef.DataField,
-                                IsLog = fieldDef.IsLog
-                            });
-                            remainingFields.Remove(field);
-                        }
-                        else if (fieldDef.IsRequired)
-                        {
-                            result.AddError($"Error: Required field {fieldDef.Tag} ({fieldDef.Name}) not found.");
-                        }
-                    }
-                }
-
-                // Process loops
-                foreach (var field in remainingFields.ToList())
-                {
-                    if (field.Key == loopStartTag && msgDef.GetChildren().TryGetValue(field.Key, out var loopObj) && loopObj is LoopDef loopDef)
-                    {
-                        if (currentLoop != null && currentLoop.Any())
-                        {
-                            result.Loops.Add(currentLoop);
-                        }
-                        currentLoop = new List<FieldOutput>();
-                        currentLoop.Add(new FieldOutput
-                        {
-                            Tag = loopDef.Tag,
-                            Name = loopDef.Name,
-                            Value = ParseFieldValue(new FieldDef(loopDef.Tag, loopDef.Name, FieldType.Int, loopDef.Counter, false, null, false), field.Value),
-                            Type = FieldType.Int.ToString(),
-                            DataField = loopDef.Counter,
-                            IsLog = false
-                        });
-                        remainingFields.Remove(field);
-                    }
-                    else if (currentLoop != null && loopStartTag != null && msgDef.GetChildren().ContainsKey(loopStartTag))
-                    {
-                        if (msgDef.GetChildren()[loopStartTag] is LoopDef innerLoopDef)
-                        {
-                            if (innerLoopDef.GetChildren().TryGetValue(field.Key, out var fieldDef))
-                            {
-                                var parsedValue = ParseFieldValue(fieldDef, field.Value);
-                                currentLoop.Add(new FieldOutput
+                                var currentLoop = new List<MessageField>();
+                                bool loopEnded = false;
+                                while (currentIndex < fieldPairs.Length && !loopEnded)
                                 {
-                                    Tag = fieldDef.Tag,
-                                    Name = fieldDef.Name,
-                                    Value = parsedValue,
-                                    Type = fieldDef.Type.ToString(),
-                                    DataField = fieldDef.DataField,
-                                    IsLog = fieldDef.IsLog
-                                });
-                                remainingFields.Remove(field);
+                                    string pair = fieldPairs[currentIndex];
+                                    int equalsIndex = pair.IndexOf('=');
+                                    if (equalsIndex > 0)
+                                    {
+                                        string tag = pair.Substring(0, equalsIndex);
+                                        string value = pair.Substring(equalsIndex + 1);
+                                        if (loopDef.GetChildren().TryGetValue(tag, out object? fieldDefObj) && fieldDefObj is FieldDef fieldDef)
+                                        {
+                                            var field = ParseField(tag, value, fieldDef, msgType);
+                                            currentLoop.Add(field);
+                                            if (field.Name == "MarketId" || field.Name == "Symbol" || field.Name == "TransactTime")
+                                            {
+#pragma warning disable CS8601
+                                                loopFieldsDict[field.Name] = field.ParsedValue ?? (object)string.Empty;
+#pragma warning restore CS8601
+                                            }
+                                            currentIndex++;
+                                        }
+                                        else
+                                        {
+                                            bool isAnotherCounter = msgDef.GetChildren().Values.OfType<LoopDef>().Any(ld => ld.Counter == tag);
+                                            bool isKnownField = msgDef.GetChildren().ContainsKey(tag) || specs.HeaderFields.ContainsKey(tag) || tag == "10";
+                                            if (isAnotherCounter || isKnownField)
+                                            {
+                                                loopEnded = true;
+                                            }
+                                            else
+                                            {
+                                                unparsedFields.Add(pair);
+                                                currentIndex++;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        currentIndex++;
+                                    }
+                                }
+                                if (currentLoop.Count > 0)
+                                {
+                                    loops.Add(currentLoop);
+                                }
                             }
                         }
                     }
                 }
+            }
 
-                if (currentLoop != null && currentLoop.Any())
+            foreach (var child in msgDef.GetChildren())
+            {
+                if (child.Value is FieldDef fieldDef && fieldDef.IsRequired)
                 {
-                    result.Loops.Add(currentLoop);
+                    if (!fields.Exists(f => f.Tag == fieldDef.Tag))
+                    {
+                        errors.Add($"Missing required field: Tag {fieldDef.Tag} ({fieldDef.Name})");
+                        return new ParseResult(errors, null);
+                    }
                 }
             }
 
-            if (remainingFields.Any())
+            string unparsedText = unparsedFields.Count > 0 ? string.Join(specs.DelimiterChar.ToString(), unparsedFields) : string.Empty;
+
+            var summary = new MessageSummary
             {
-                result.AddError($"Warning: Found {remainingFields.Count} undefined fields: {string.Join(", ", remainingFields.Select(f => f.Key))}");
-            }
+                MsgType = msgType ?? string.Empty,
+                MsgName = msgDef.Name ?? $"MsgType_{msgType}",
+                TotalFields = fields.Count + loops.Sum(l => l.Count),
+                Header = unparsedText,
+                CheckSumPassed = checkSumPassed,
+                UnparsedText = unparsedText,
+                TotalMessageLength = messageLength,
+                LoopCount = loops.Count
+            };
+            summary.MessageFields.AddRange(fields);
+            if (loops.Count > 0) summary.Loops.AddRange(loops);
+
+            return new ParseResult(errors, summary);
         }
 
-        private object? ParseFieldValue(FieldDef fieldDef, string? value)
+        private bool VerifyCheckSum(string message, string[] fieldPairs)
         {
-            if (string.IsNullOrEmpty(value)) return null;
-
-            try
-            {
-                return fieldDef.Type switch
-                {
-                    FieldType.Int => int.TryParse(value, out int intValue) ? (object)intValue : throw new FormatException($"Cannot parse '{value}' as Int"),
-                    FieldType.Double => double.TryParse(value, out double doubleValue) ? (object)doubleValue : throw new FormatException($"Cannot parse '{value}' as Double"),
-                    FieldType.Date => ParseDateField(value, fieldDef.DateFormat),
-                    FieldType.String => (object)value,
-                    _ => throw new ArgumentException($"Unsupported FieldType: {fieldDef.Type}")
-                };
-            }
-            catch (Exception ex)
-            {
-                result.AddError($"Error parsing field {fieldDef.Tag} ({fieldDef.Name}): {ex.Message}");
-                return null;
-            }
-        }
-
-        private DateTime? ParseDateField(string value, string? dateFormat)
-        {
-            if (string.IsNullOrEmpty(dateFormat))
-                dateFormat = "yyyyMMdd"; // Default FIX date format
-
-            if (DateTime.TryParseExact(value, dateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime date))
-            {
-                int offset = GetTimeZoneOffset(specs.TimeZone ?? "UTC+7");
-                return date.AddHours(offset);
-            }
-            throw new FormatException($"Cannot parse '{value}' as Date with format {dateFormat}");
-        }
-
-        private int GetTimeZoneOffset(string timeZone)
-        {
-            return timeZone.ToUpper() == "UTC+7" ? 7 : 0; // Vietnam offset
+            int trailerIdx = Array.FindIndex(fieldPairs, p => p.StartsWith("10="));
+            if (trailerIdx < 0) return true;
+            string body = string.Join(specs.DelimiterChar.ToString(), fieldPairs, 0, trailerIdx);
+            int calculated = CalculateCheckSum(body);
+            string checkSumValue = fieldPairs[trailerIdx].Substring(3);
+            return int.TryParse(checkSumValue, out int checkSum) && calculated == checkSum;
         }
 
         private int CalculateCheckSum(string str)
         {
             byte[] buffer = Encoding.ASCII.GetBytes(str);
             int cks = 0;
-            foreach (byte b in buffer)
-                cks += b;
+            for (int i = 0; i < buffer.Length; i++) cks += buffer[i];
             return cks % 256;
         }
 
-        public ParseResult GetResult() => result;
+        private MessageField ParseField(string tag, string value, FieldDef fieldDef, string? msgType)
+        {
+            string? dateFormat = null;
+            if (fieldDef.Type == FieldType.Date)
+            {
+                if (!string.IsNullOrEmpty(msgType) && dateFormats.TryGetValue($"{msgType}:{tag}", out string? format))
+                {
+                    dateFormat = format;
+                }
+                else if (!string.IsNullOrEmpty(fieldDef.DateFormat))
+                {
+                    dateFormat = fieldDef.DateFormat;
+                }
+            }
+            object? parsedValue = ParseFieldValue(value, fieldDef.Type, dateFormat, tag);
+            return new MessageField
+            {
+                Tag = tag,
+                Name = fieldDef.Name,
+                Value = value,
+                Type = fieldDef.Type.ToString(),
+                DataField = fieldDef.DataField,
+                ParsedValue = parsedValue
+            };
+        }
+
+        private object? ParseFieldValue(string value, FieldType type, string? dateFormat, string tag)
+        {
+            if (string.IsNullOrEmpty(value)) return null;
+            switch (type)
+            {
+                case FieldType.Int: return int.TryParse(value, out int i) ? (object)i : null;
+                case FieldType.Double: return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? (object)d : null;
+                case FieldType.Date:
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(dateFormat))
+                        {
+                            if (dateFormat == "HHmmssSSS" || dateFormat == "HHmmss")
+                            {
+                                DateTime baseDate = DateTime.UtcNow.AddHours(7).Date;
+                                DateTime time = DateTime.ParseExact(value, dateFormat, CultureInfo.InvariantCulture);
+                                DateTime combined = baseDate.Add(time.TimeOfDay);
+                                return combined;
+                            }
+                            else
+                            {
+                                DateTime dt = DateTime.ParseExact(value, dateFormat, CultureInfo.InvariantCulture);
+                                dt = dt.AddHours(7);
+                                return dt;
+                            }
+                        }
+                        else if (DateTime.TryParse(value, out DateTime dtDefault))
+                        {
+                            dtDefault = dtDefault.AddHours(7);
+                            return dtDefault;
+                        }
+                    }
+                    catch (FormatException)
+                    {
+                        return null;
+                    }
+                    return null;
+                default: return value;
+            }
+        }
+
+        public string? GetMsgType(string message)
+        {
+            string[] parts = message.Split(specs.DelimiterChar);
+            foreach (var part in parts)
+            {
+                if (part.StartsWith("35=")) return part.Substring(3);
+            }
+            return null;
+        }
     }
 }

@@ -1,5 +1,5 @@
-using MarketDataPlugin;
-using MarketDataPlugin.DEF;
+using MarketDataPlugin; // For Specs
+using MarketDataPlugin.DEF; // For FieldDef, MsgDef, LoopDef, DataDirection, FieldType
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,8 +7,10 @@ using System.Xml;
 
 namespace MarketDataPlugin.Parsers
 {
+    // Processes FIX message specifications from an XML file
     public class SpecProcessor
     {
+        // Loads specs from an XML file into a Specs object
         public Specs LoadSpecs(string specsFile, string majorVersion, string minorVersion)
         {
             if (string.IsNullOrEmpty(specsFile) || !File.Exists(specsFile))
@@ -65,7 +67,7 @@ namespace MarketDataPlugin.Parsers
                     };
 
                     var msgDef = new MsgDef(name, msgType, direction);
-                    messages[msgType] = msgDef;
+                    messages.Add(msgType, msgDef);
 
                     var childNodes = msgNode.SelectNodes("Field | Loop");
                     if (childNodes != null)
@@ -80,7 +82,8 @@ namespace MarketDataPlugin.Parsers
                             else if (childNode.Name == "Loop")
                             {
                                 var loopDef = ParseLoopDef(childNode);
-                                msgDef.AddChild(loopDef.Tag, loopDef);
+                                string counter = loopDef.Counter ?? "Unknown"; // Default to "Unknown" if null
+                                msgDef.AddChild(counter, loopDef); // Use null-checked counter
                             }
                         }
                     }
@@ -91,6 +94,7 @@ namespace MarketDataPlugin.Parsers
                 ?? throw new ArgumentException("Failed to initialize specs.", nameof(specsFile));
         }
 
+        // Parses XML content into an XmlDocument
         private XmlDocument ParseXmlDocument(string xmlContent)
         {
             try
@@ -105,6 +109,7 @@ namespace MarketDataPlugin.Parsers
             }
         }
 
+        // Parses a Field element from XML into a FieldDef object
         private FieldDef ParseFieldDef(XmlNode node)
         {
             string fieldTagValue = node.Attributes?["Tag"]?.Value ?? "";
@@ -127,14 +132,14 @@ namespace MarketDataPlugin.Parsers
             return new FieldDef(fieldTagValue, fieldName, type, dataField, isLog, dateFormat, isRequired);
         }
 
+        // Parses a Loop element from XML into a LoopDef object
         private LoopDef ParseLoopDef(XmlNode node)
         {
             string loopTagValue = node.Attributes?["Tag"]?.Value ?? "";
             string loopName = node.Attributes?["Name"]?.Value ?? "Unknown";
             string counterValue = node.Attributes?["Counter"]?.Value ?? "";
 
-            var loopDef = new LoopDef(loopTagValue, loopName, counterValue);
-
+            var children = new Dictionary<string, FieldDef>(); // Initialize dictionary for child fields
             var loopChildNodes = node.SelectNodes("Field | Loop");
             if (loopChildNodes != null)
             {
@@ -143,12 +148,13 @@ namespace MarketDataPlugin.Parsers
                     if (loopChildNode.Name == "Field")
                     {
                         var loopFieldDef = ParseFieldDef(loopChildNode);
-                        loopDef.AddChild(loopFieldDef.Tag, loopFieldDef);
+                        children[loopFieldDef.Tag] = loopFieldDef; // Add child field to dictionary
                     }
+                    // Note: Nested loops (Loop within Loop) are not handled here; consider recursion if needed
                 }
             }
 
-            return loopDef;
+            return new LoopDef(counterValue, loopName, children); // Pass dictionary instead of counterValue
         }
     }
 }
