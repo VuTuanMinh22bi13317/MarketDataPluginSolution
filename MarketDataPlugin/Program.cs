@@ -1,5 +1,4 @@
-﻿using MarketDataPlugin;
-using MarketDataPlugin.Parsers;
+﻿using MarketDataPlugin.Parsers;
 using System;
 using System.IO;
 
@@ -18,7 +17,7 @@ namespace FixMessageParserApp
             try
             {
                 // Set paths for the config file and folder with .raw files
-                string specsFile = @"C:/Users/Admin/MarketDataPluginSolution/MarketDataPlugin/Specs/MDDS-Specs.xml";
+                string configFile = @"C:/Users/Admin/MarketDataPluginSolution/MarketDataPlugin/Specs/MDDS-Specs.xml";
                 string folderPath = @"C:/Users/Admin/Downloads/20250416 (1)/20250416";
 
                 // Check if the folder exists
@@ -28,11 +27,8 @@ namespace FixMessageParserApp
                     return;
                 }
 
-                // Load specs from the config file
-                var specs = Specs.Load(specsFile, "4", "4");
-
-                // Create a parser using the loaded specs
-                var parser = new FixParser(specs, specsFile);
+                // Create a parser using the config file directly
+                var parser = new FixMessageParser(configFile);
 
                 // Show parser config for debugging
                 Console.WriteLine("\nParser Configuration:");
@@ -72,21 +68,23 @@ namespace FixMessageParserApp
                                 writer.WriteLine($"  - {result.Errors[i]}");
                             }
                         }
-                        // Show summary if parsing worked
-                        else if (result.Summary != null)
+                        // Show summary based on parsed fields and loops (approximation since Summary is not available)
+                        else if (result.Fields != null || result.Loops != null)
                         {
-                            Console.WriteLine($"MsgType: {result.Summary.MsgType}, MsgName: {result.Summary.MsgName}, TotalFields: {result.Summary.TotalFields}, CheckSumPassed: {result.Summary.CheckSumPassed}");
-                            writer.WriteLine($"MsgType: {result.Summary.MsgType}, MsgName: {result.Summary.MsgName}, TotalFields: {result.Summary.TotalFields}, CheckSumPassed: {result.Summary.CheckSumPassed}");
-                            if (!string.IsNullOrEmpty(result.Summary.UnparsedText))
+                            int totalFields = (result.Fields?.Count ?? 0) + (result.Loops?.Sum(l => l.ParsedFields.Count) ?? 0);
+                            bool checkSumPassed = !result.Errors.Any(e => e.Contains("Checksum failed"));
+                            Console.WriteLine($"Total Fields: {totalFields}, CheckSumPassed: {checkSumPassed}");
+                            writer.WriteLine($"Total Fields: {totalFields}, CheckSumPassed: {checkSumPassed}");
+                            if (!string.IsNullOrEmpty(result.UnparsedText))
                             {
-                                Console.WriteLine($"Warning: Unparsed fields detected (possible specs update needed): {result.Summary.UnparsedText}");
-                                writer.WriteLine($"Warning: Unparsed fields detected (possible specs update needed): {result.Summary.UnparsedText}");
+                                Console.WriteLine($"Warning: Unparsed fields detected (possible specs update needed): {result.UnparsedText}");
+                                writer.WriteLine($"Warning: Unparsed fields detected (possible specs update needed): {result.UnparsedText}");
                             }
                         }
                         else
                         {
-                            Console.WriteLine("Parsing successful with no summary.");
-                            writer.WriteLine("Parsing successful with no summary.");
+                            Console.WriteLine("Parsing successful with no fields or loops.");
+                            writer.WriteLine("Parsing successful with no fields or loops.");
                         }
                         Console.WriteLine();
                         writer.WriteLine();

@@ -38,13 +38,13 @@ namespace MarketDataPlugin.DEF
     public static class MessageSplitter
     {
         // Splits raw data into messages based on BeginString and BodyLength
-        public static List<string> SplitMessages(Specs specs, string rawData, string expectedBeginString)
+        public static List<string> SplitMessages(char delimiterChar, string rawData, string expectedBeginString)
         {
             var messages = new List<string>(); // Stores extracted messages
             int index = 0; // Tracks position in raw data
 
             Console.WriteLine($"Debug: Processing raw data of length {rawData.Length}");
-            Console.WriteLine($"Debug: Expected BeginString: 8={expectedBeginString}{specs.DelimiterChar}");
+            Console.WriteLine($"Debug: Expected BeginString: 8={expectedBeginString}{delimiterChar}");
             while (index < rawData.Length)
             {
                 int beginIndex = rawData.IndexOf("8=", index); // Find start of a message
@@ -56,14 +56,14 @@ namespace MarketDataPlugin.DEF
 
                 string segment = rawData.Substring(beginIndex).TrimStart(); // Get segment starting at 8=
                 Console.WriteLine($"Debug: Checking segment at index {beginIndex}, starts with: {segment.Substring(0, Math.Min(15, segment.Length))}...");
-                if (!segment.StartsWith($"8={expectedBeginString}{specs.DelimiterChar}"))
+                if (!segment.StartsWith($"8={expectedBeginString}{delimiterChar}"))
                 {
-                    Console.WriteLine($"Debug: Segment at index {beginIndex} does not start with 8={expectedBeginString}{specs.DelimiterChar}, skipping.");
+                    Console.WriteLine($"Debug: Segment at index {beginIndex} does not start with 8={expectedBeginString}{delimiterChar}, skipping.");
                     index = beginIndex + 2;
                     continue;
                 }
 
-                int bodyLength = GetBodyLength(specs, rawData, beginIndex); // Get the body length (Tag 9)
+                int bodyLength = GetBodyLength(delimiterChar, rawData, beginIndex); // Get the body length (Tag 9)
                 Console.WriteLine($"Debug: Found BodyLength at index {beginIndex}: {bodyLength}");
                 if (bodyLength < 0)
                 {
@@ -92,14 +92,14 @@ namespace MarketDataPlugin.DEF
         }
 
         // Gets the body length (Tag 9) from the raw data
-        private static int GetBodyLength(Specs specs, string rawData, int startIndex)
+        private static int GetBodyLength(char delimiterChar, string rawData, int startIndex)
         {
             int lengthStart = rawData.IndexOf($"9=", startIndex); // Find Tag 9
             if (lengthStart < 0)
                 return -1;
 
             lengthStart += 2;
-            int lengthEnd = rawData.IndexOf(specs.DelimiterChar, lengthStart); // Find end of Tag 9 value
+            int lengthEnd = rawData.IndexOf(delimiterChar, lengthStart); // Find end of Tag 9 value
             if (lengthEnd < 0)
                 return -1;
 

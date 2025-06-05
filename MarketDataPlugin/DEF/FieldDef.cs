@@ -1,28 +1,28 @@
-﻿using System;
-
-namespace MarketDataPlugin.DEF
+﻿namespace MarketDataPlugin.DEF
 {
-    // Defines a single field in a FIX message with its tag, name, and type
-    public class FieldDef
+    public class FieldDef : MsgChildDef
     {
-        public string Tag { get; } // Tag number of the field
-        public FieldType Type { get; } // Data type of the field
-        public string Name { get; } // Name of the field
-        public string? DataField { get; } // Associated data field identifier
-        public bool IsLog { get; } // Flag indicating if field should be logged
-        public string? DateFormat { get; } // Date format for Date type fields
-        public bool IsRequired { get; } // Flag indicating if field is required
-
-        // Creates a new FieldDef with the given details
-        public FieldDef(string tag, string name, FieldType type, string? dataField, bool isLog, string? dateFormat, bool isRequired)
+        public FieldDef(string tag, string name) : base(tag, name)
         {
-            Tag = tag;
-            Name = name;
-            Type = type;
-            DataField = dataField;
-            IsLog = isLog;
-            DateFormat = dateFormat;
-            IsRequired = isRequired;
+        }
+
+        public int Tag { get; set; }
+        public bool TimeZoneEffected { get; set; } = false;
+        public string Name { get; set; } = string.Empty;
+        public DataDirection Direction { get; set; } = DataDirection.InOut;
+        public string DataField { get; set; } = string.Empty;
+        public int DataIdx { get; set; } = -1;
+        public FieldType Type { get; set; } = FieldType.String;
+        public string DateFormat { get; set; } = string.Empty;
+        public string DefaultValue { get; set; } = string.Empty;
+        public bool IsLog { get; set; } = true;
+        public bool ToLoop { get; set; } = false;
+        public bool IsRequired { get; set; } = false;
+        public int TimeZone { get; set; } = 7;
+
+        public override void Parse(string value)
+        {
+            throw new NotSupportedException("FieldDef does not support parsing directly.");
         }
     }
 }
