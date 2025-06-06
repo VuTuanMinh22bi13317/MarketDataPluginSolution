@@ -4,9 +4,10 @@
     {
         public FieldDef(string tag, string name) : base(tag, name)
         {
+            Name = name; // Set the Name property of FieldDef
         }
 
-        public int Tag { get; set; }
+        public new int Tag { get; set; } // Explicitly hide inherited Tag
         public bool TimeZoneEffected { get; set; } = false;
         public string Name { get; set; } = string.Empty;
         public DataDirection Direction { get; set; } = DataDirection.InOut;

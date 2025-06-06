@@ -1,4 +1,4 @@
-﻿using MarketDataPlugin.Parsers;
+﻿using MarketDataPlugin;
 using System;
 using System.IO;
 
