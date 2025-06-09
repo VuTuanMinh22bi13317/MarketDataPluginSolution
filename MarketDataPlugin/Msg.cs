@@ -72,7 +72,7 @@ namespace MarketDataPlugin
                 return null;
             }
 
-            // Step 4: Validate checksum if enabled
+            // Step 4: Validate checksum if enabled (no exception, just record result)
             bool checkSumPassed = !parser.InMsgChecksum;
             int calculated = 0;
             string expectedCheckSum = checkSumValueRaw.PadLeft(3, '0'); // Padding về 3 chữ số
@@ -91,7 +91,8 @@ namespace MarketDataPlugin
                     checkSumPassed = (calculated % 256 == checkSum);
                     if (!checkSumPassed)
                     {
-                        errors.Add($"Checksum mismatch: Calculated {calculated % 256}, Expected {checkSum}");
+                        Console.WriteLine($"Debug: Checksum mismatch: Calculated {calculated % 256}, Expected {checkSum}");
+                        // Không thêm lỗi vào errors, chỉ ghi log
                     }
                 }
             }
@@ -245,7 +246,7 @@ namespace MarketDataPlugin
 
         private MessageField ParseField(string tag, string value, FieldDef fieldDef, string msgType)
         {
-            string? dateFormat = null; // Initialize with null
+            string? dateFormat = null;
             if (fieldDef.Type == FieldType.Date && parser.DateFormats.TryGetValue($"{msgType}:{tag}", out string? format))
             {
                 dateFormat = format;

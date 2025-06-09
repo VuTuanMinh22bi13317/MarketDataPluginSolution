@@ -37,53 +37,69 @@ namespace MarketDataPlugin.DEF
     // Splits raw FIX data into individual messages
     public static class MessageSplitter
     {
-        // Splits raw data into messages based on BeginString and BodyLength
-        public static List<string> SplitMessages(char delimiterChar, string rawData, string expectedBeginString)
+        // Splits raw data into messages based on BeginString and BodyLength, returns total message length
+        public static List<(string Message, int TotalLength)> SplitMessages(char delimiterChar, string rawData, string expectedBeginString)
         {
-            var messages = new List<string>(); // Stores extracted messages
+            var messages = new List<(string, int)>(); // Stores extracted messages and their total length
             int index = 0; // Tracks position in raw data
 
             Console.WriteLine($"Debug: Processing raw data of length {rawData.Length}");
             Console.WriteLine($"Debug: Expected BeginString: 8={expectedBeginString}{delimiterChar}");
             while (index < rawData.Length)
             {
-                int beginIndex = rawData.IndexOf("8=", index); // Find start of a message
+                int beginIndex = rawData.IndexOf($"8={expectedBeginString}{delimiterChar}", index); // Find exact BeginString
                 if (beginIndex == -1)
                 {
                     Console.WriteLine($"Debug: No more messages found after index {index}");
                     break;
                 }
 
-                string segment = rawData.Substring(beginIndex).TrimStart(); // Get segment starting at 8=
-                Console.WriteLine($"Debug: Checking segment at index {beginIndex}, starts with: {segment.Substring(0, Math.Min(15, segment.Length))}...");
-                if (!segment.StartsWith($"8={expectedBeginString}{delimiterChar}"))
-                {
-                    Console.WriteLine($"Debug: Segment at index {beginIndex} does not start with 8={expectedBeginString}{delimiterChar}, skipping.");
-                    index = beginIndex + 2;
-                    continue;
-                }
-
+                string segment = rawData.Substring(beginIndex); // Get segment starting at exact BeginString
+                Console.WriteLine($"Debug: Processing segment at index {beginIndex}, starts with: {segment.Substring(0, Math.Min(15, segment.Length))}...");
                 int bodyLength = GetBodyLength(delimiterChar, rawData, beginIndex); // Get the body length (Tag 9)
                 Console.WriteLine($"Debug: Found BodyLength at index {beginIndex}: {bodyLength}");
                 if (bodyLength < 0)
                 {
                     Console.WriteLine($"Debug: Invalid or missing BodyLength at index {beginIndex}, skipping.");
-                    index = beginIndex + 2;
+                    index = beginIndex + $"8={expectedBeginString}{delimiterChar}".Length;
                     continue;
                 }
 
-                int expectedEnd = beginIndex + bodyLength + 6; // Calculate end of message
-                Console.WriteLine($"Debug: Expected end at {expectedEnd}, checking for 10=");
-                if (expectedEnd > rawData.Length || !rawData.Substring(expectedEnd - 6, 6).StartsWith($"10="))
+                // Find the end of tag 9 to determine the start of the body
+                int bodyStart = rawData.IndexOf(delimiterChar, beginIndex + $"8={expectedBeginString}{delimiterChar}".Length) + 1; // Vị trí sau tag 9
+                if (bodyStart < 0 || bodyStart >= rawData.Length)
                 {
-                    Console.WriteLine($"Debug: No valid tag 10 at expected end {expectedEnd}, skipping.");
-                    index = beginIndex + 2;
+                    Console.WriteLine($"Debug: Invalid body start at index {beginIndex}, skipping.");
+                    index = beginIndex + $"8={expectedBeginString}{delimiterChar}".Length;
                     continue;
                 }
+
+                // Find the start of tag 10 (just before the checksum value)
+                int checksumStart = rawData.IndexOf($"{delimiterChar}10=", bodyStart);
+                if (checksumStart < 0 || checksumStart < bodyStart + bodyLength)
+                {
+                    Console.WriteLine($"Debug: No valid tag 10 found after body length {bodyLength} at index {beginIndex}, skipping.");
+                    index = beginIndex + $"8={expectedBeginString}{delimiterChar}".Length;
+                    continue;
+                }
+
+                // Calculate actual body length (from after tag 9 to before tag 10)
+                int actualBodyLength = checksumStart - bodyStart;
+                if (actualBodyLength != bodyLength)
+                {
+                    Console.WriteLine($"Debug: BodyLength mismatch: Expected {bodyLength}, actual {actualBodyLength} at index {beginIndex}, skipping.");
+                    index = beginIndex + $"8={expectedBeginString}{delimiterChar}".Length;
+                    continue;
+                }
+
+                int checksumEnd = rawData.IndexOf(delimiterChar, checksumStart + 4);
+                if (checksumEnd < 0) checksumEnd = rawData.Length;
+                int expectedEnd = checksumEnd + 1; // Bao gồm delimiter cuối cùng
+                int totalLength = expectedEnd - beginIndex; // Độ dài toàn bộ message
 
                 string message = rawData.Substring(beginIndex, expectedEnd - beginIndex); // Extract the message
-                messages.Add(message);
-                Console.WriteLine($"Debug: Added message of length {message.Length}");
+                messages.Add((message, totalLength));
+                Console.WriteLine($"Debug: Added message of length {totalLength}");
                 index = expectedEnd;
             }
 

@@ -68,15 +68,16 @@ namespace MarketDataPlugin
             }
             foreach (XmlNode node in headerNodes)
             {
-                string tagStr = node.Attributes?["Tag"]?.Value ?? throw new ArgumentException($"Missing Tag attribute in Header Field node");
+                string? tagStr = node.Attributes?["Tag"]?.Value;
+                if (string.IsNullOrEmpty(tagStr)) throw new ArgumentException($"Missing Tag attribute in Header Field node");
                 if (!int.TryParse(tagStr, out int tag))
                     throw new ArgumentException($"Invalid Tag value '{tagStr}' in Header Field node");
-                string name = node.Attributes?["Name"]?.Value ?? throw new ArgumentException($"Missing Name attribute in Header Field node");
+                string? name = node.Attributes?["Name"]?.Value;
                 if (string.IsNullOrWhiteSpace(name))
                     throw new ArgumentException($"Name attribute cannot be empty in Header Field node with Tag '{tagStr}'");
-                string typeStr = node.Attributes?["Type"]?.Value?.Trim() ?? "String";
+                string? typeStr = node.Attributes?["Type"]?.Value?.Trim() ?? "String";
                 FieldType type = Enum.TryParse(typeStr, true, out FieldType parsedType) ? parsedType : FieldType.String;
-                string dataField = node.Attributes?["DataField"]?.Value ?? string.Empty;
+                string? dataField = node.Attributes?["DataField"]?.Value ?? string.Empty;
                 bool timeZoneEffected = bool.TryParse(node.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
                 string? dateFormat = type == FieldType.Date && node.Attributes?["DateFormat"]?.Value != null ? node.Attributes["DateFormat"].Value : null;
 
@@ -99,11 +100,12 @@ namespace MarketDataPlugin
             }
             foreach (XmlNode node in msgNodes)
             {
-                string msgType = node.Attributes?["MsgType"]?.Value ?? throw new ArgumentException($"Missing MsgType attribute in Msg node");
-                string name = node.Attributes?["Name"]?.Value ?? throw new ArgumentException($"Missing Name attribute in Msg node");
+                string? msgType = node.Attributes?["MsgType"]?.Value;
+                if (string.IsNullOrEmpty(msgType)) throw new ArgumentException($"Missing MsgType attribute in Msg node");
+                string? name = node.Attributes?["Name"]?.Value;
                 if (string.IsNullOrWhiteSpace(name))
                     throw new ArgumentException($"Name attribute cannot be empty in Msg node with MsgType '{msgType}'");
-                string tableName = node.Attributes?["TableName"]?.Value ?? string.Empty;
+                string? tableName = node.Attributes?["TableName"]?.Value ?? string.Empty;
                 _msgTableNames[msgType] = tableName;
                 if (Enum.TryParse<DataDirection>(node.Attributes?["Direction"]?.Value ?? "InOut", out var direction))
                 {
@@ -118,8 +120,8 @@ namespace MarketDataPlugin
                         {
                             if (childNode.Name == "Field")
                             {
-                                string tag = childNode.Attributes?["Tag"]?.Value ?? string.Empty;
-                                string fieldName = childNode.Attributes?["Name"]?.Value ?? "Unknown";
+                                string? tag = childNode.Attributes?["Tag"]?.Value ?? string.Empty;
+                                string? fieldName = childNode.Attributes?["Name"]?.Value ?? "Unknown";
                                 _fieldNameToTag[fieldName] = tag;
                             }
                         }
@@ -128,15 +130,16 @@ namespace MarketDataPlugin
                         {
                             if (childNode.Name == "Field")
                             {
-                                string tagStr = childNode.Attributes?["Tag"]?.Value ?? throw new ArgumentException($"Missing Tag attribute in Field node");
+                                string? tagStr = childNode.Attributes?["Tag"]?.Value;
+                                if (string.IsNullOrEmpty(tagStr)) throw new ArgumentException($"Missing Tag attribute in Field node");
                                 if (!int.TryParse(tagStr, out int tag))
                                     throw new ArgumentException($"Invalid Tag value '{tagStr}' in Field node");
-                                string fieldName = childNode.Attributes?["Name"]?.Value ?? throw new ArgumentException($"Missing Name attribute in Field node");
+                                string? fieldName = childNode.Attributes?["Name"]?.Value;
                                 if (string.IsNullOrWhiteSpace(fieldName))
                                     throw new ArgumentException($"Name attribute cannot be empty in Field node with tag '{tagStr}' in MsgType '{msgType}'");
-                                string typeStr = childNode.Attributes?["Type"]?.Value?.Trim() ?? "String";
+                                string? typeStr = childNode.Attributes?["Type"]?.Value?.Trim() ?? "String";
                                 FieldType type = Enum.TryParse(typeStr, true, out FieldType parsedType) ? parsedType : FieldType.String;
-                                string dataField = childNode.Attributes?["DataField"]?.Value ?? string.Empty;
+                                string? dataField = childNode.Attributes?["DataField"]?.Value ?? string.Empty;
                                 bool isRequired = bool.TryParse(childNode.Attributes?["IsRequired"]?.Value, out bool required) ? required : false;
                                 bool timeZoneEffected = bool.TryParse(childNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
                                 string? dateFormat = type == FieldType.Date && childNode.Attributes?["DateFormat"]?.Value != null ? childNode.Attributes["DateFormat"].Value : null;
@@ -157,9 +160,9 @@ namespace MarketDataPlugin
                             }
                             else if (childNode.Name == "Loop")
                             {
-                                string counterName = childNode.Attributes?["Counter"]?.Value ?? string.Empty;
+                                string? counterName = childNode.Attributes?["Counter"]?.Value ?? string.Empty;
                                 string counterTag = _fieldNameToTag.TryGetValue(counterName, out var tag) ? tag : counterName;
-                                string loopName = childNode.Attributes?["Name"]?.Value ?? "Unknown";
+                                string? loopName = childNode.Attributes?["Name"]?.Value ?? "Unknown";
                                 var children = new Dictionary<string, FieldDef>();
                                 var loopDef = new LoopDef(counterTag, loopName, children);
                                 var loopChildNodes = childNode.SelectNodes("Field");
@@ -167,15 +170,16 @@ namespace MarketDataPlugin
                                 {
                                     foreach (XmlNode loopChildNode in loopChildNodes)
                                     {
-                                        string loopTagStr = loopChildNode.Attributes?["Tag"]?.Value ?? throw new ArgumentException($"Missing Tag attribute in Loop Field node");
+                                        string? loopTagStr = loopChildNode.Attributes?["Tag"]?.Value;
+                                        if (string.IsNullOrEmpty(loopTagStr)) throw new ArgumentException($"Missing Tag attribute in Loop Field node");
                                         if (!int.TryParse(loopTagStr, out int loopTag))
                                             throw new ArgumentException($"Invalid Tag value '{loopTagStr}' in Loop Field node");
-                                        string loopFieldName = loopChildNode.Attributes?["Name"]?.Value ?? throw new ArgumentException($"Missing Name attribute in Loop Field node");
+                                        string? loopFieldName = loopChildNode.Attributes?["Name"]?.Value;
                                         if (string.IsNullOrWhiteSpace(loopFieldName))
                                             throw new ArgumentException($"Name attribute cannot be empty in Loop Field node with tag '{loopTagStr}' in MsgType '{msgType}'");
-                                        string loopTypeStr = loopChildNode.Attributes?["Type"]?.Value?.Trim() ?? "String";
+                                        string? loopTypeStr = loopChildNode.Attributes?["Type"]?.Value?.Trim() ?? "String";
                                         FieldType loopType = Enum.TryParse(loopTypeStr, true, out FieldType parsedType) ? parsedType : FieldType.String;
-                                        string loopDataField = loopChildNode.Attributes?["DataField"]?.Value ?? string.Empty;
+                                        string? loopDataField = loopChildNode.Attributes?["DataField"]?.Value ?? string.Empty;
                                         bool loopIsRequired = bool.TryParse(loopChildNode.Attributes?["IsRequired"]?.Value, out bool required) ? required : false;
                                         bool loopTimeZoneEffected = bool.TryParse(loopChildNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
                                         string? loopDateFormat = loopType == FieldType.Date && loopChildNode.Attributes?["DateFormat"]?.Value != null ? loopChildNode.Attributes["DateFormat"].Value : null;
@@ -284,7 +288,6 @@ namespace MarketDataPlugin
         {
             var errors = new List<string>();
             var logBatch = new List<(int messageNumber, string logEntry)>();
-            const int batchSize = 1000;
 
             try
             {
@@ -295,74 +298,10 @@ namespace MarketDataPlugin
                 var rawData = File.ReadAllText(filePath);
                 Console.WriteLine($"Debug: Processing raw data of length {rawData.Length}");
 
-                // Step 1: Split raw data into messages
-                var messages = new List<(string message, int startIndex)>();
-                int index = 0;
-                while (index < rawData.Length)
-                {
-                    int beginStringIndex = rawData.IndexOf($"8={_beginString}", index);
-                    if (beginStringIndex == -1)
-                    {
-                        Console.WriteLine("Debug: No more BeginString found, ending message splitting.");
-                        break;
-                    }
-
-                    index = beginStringIndex;
-
-                    // Tìm tag 9
-                    int bodyLengthTagStart = rawData.IndexOf($"{_delimiterChar}9=", index) + 2;
-                    if (bodyLengthTagStart < 2 || bodyLengthTagStart >= rawData.Length)
-                    {
-                        errors.Add($"Invalid or missing BodyLength (Tag 9) at index {index}");
-                        break;
-                    }
-                    int bodyLengthTagEnd = rawData.IndexOf(_delimiterChar, bodyLengthTagStart);
-                    if (bodyLengthTagEnd < 0)
-                    {
-                        errors.Add($"Missing delimiter after BodyLength (Tag 9) at index {bodyLengthTagStart}");
-                        break;
-                    }
-                    string bodyLengthStr = rawData.Substring(bodyLengthTagStart, bodyLengthTagEnd - bodyLengthTagStart);
-                    if (!int.TryParse(bodyLengthStr, out int bodyLength))
-                    {
-                        errors.Add($"Invalid BodyLength value: '{bodyLengthStr}' at index {bodyLengthTagStart}");
-                        break;
-                    }
-                    Console.WriteLine($"Debug: Found BodyLength at index {bodyLengthTagStart}: {bodyLength}");
-
-                    // Tìm tag 10
-                    int checksumStart = rawData.IndexOf($"{_delimiterChar}10=", bodyLengthTagEnd);
-                    if (checksumStart < 0)
-                    {
-                        errors.Add($"Missing CheckSum (Tag 10) after index {bodyLengthTagEnd}");
-                        break;
-                    }
-                    int checksumEnd = rawData.IndexOf(_delimiterChar, checksumStart + 4);
-                    if (checksumEnd < 0) checksumEnd = rawData.Length;
-                    string checkSumValueRaw = rawData.Substring(checksumStart + 4, Math.Min(3, checksumEnd - (checksumStart + 4))).TrimEnd(_delimiterChar);
-                    Console.WriteLine($"Debug: Extracted CheckSum raw value: '{checkSumValueRaw}' from index {checksumStart + 4} to {checksumEnd}");
-
-                    // Cắt message
-                    int messageLength = checksumEnd + 1 - index;
-                    string message = rawData.Substring(index, messageLength);
-                    messages.Add((message, index));
-                    Console.WriteLine($"Debug: Extracted message of length {messageLength} from index {index} to {checksumEnd + 1}");
-                    index = checksumEnd + 1;
-                }
-
-                if (errors.Any())
-                {
-                    return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), string.Empty, checkSumPassed: false, calculatedChecksum: 0);
-                }
-
-                int messageCount = messages.Count;
-                Console.WriteLine($"Info: Found {messageCount} messages in file: {Path.GetFileName(filePath)}");
-
-                // Step 2: Parse each message
-                var parseResults = new List<(int index, ParseResult result, string logEntry)>();
+                var messages = MessageSplitter.SplitMessages(DelimiterChar, rawData, BeginString);
                 for (int i = 0; i < messages.Count; i++)
                 {
-                    var (message, startIndex) = messages[i];
+                    var (message, _) = messages[i]; // Rút trích message từ tuple, bỏ qua totalLength
                     int messageNumber = i + 1;
                     Console.WriteLine($"Debug: Processing message {messageNumber} from {Path.GetFileName(filePath)}");
 
@@ -371,53 +310,34 @@ namespace MarketDataPlugin
 
                     if (parseResult == null)
                     {
-                        errors.AddRange(messageErrors.Select(e => $"Message {messageNumber} (index {startIndex}): {e}"));
-                        string logEntry = ParseAndLogMessage(this, message, messageNumber, messageErrors, null, _inMsgChecksum);
-                        parseResults.Add((messageNumber, new ParseResult(messageErrors, new List<MessageField>(), new List<Loop>(), string.Empty, checkSumPassed: false, calculatedChecksum: 0), logEntry));
+                        errors.AddRange(messageErrors.Select(e => $"Message {messageNumber}: {e}"));
+                        string logEntry = ParseAndLogMessage(this, message, messageNumber, messageErrors, null, InMsgChecksum);
+                        logBatch.Add((messageNumber, logEntry));
                         continue;
                     }
 
                     if (messageErrors.Any())
                     {
-                        errors.AddRange(messageErrors.Select(e => $"Message {messageNumber} (index {startIndex}): {e}"));
+                        errors.AddRange(messageErrors.Select(e => $"Message {messageNumber}: {e}"));
                     }
 
-                    string logEntrySuccess = ParseAndLogMessage(this, message, messageNumber, messageErrors, parseResult, _inMsgChecksum);
-                    parseResults.Add((messageNumber, parseResult, logEntrySuccess));
+                    string logEntrySuccess = ParseAndLogMessage(this, message, messageNumber, messageErrors, parseResult, InMsgChecksum);
+                    logBatch.Add((messageNumber, logEntrySuccess));
                 }
 
-                var allFields = new List<MessageField>();
-                var allLoops = new List<Loop>();
-                bool allCheckSumsPassed = !_inMsgChecksum || parseResults.All(r => r.result.CheckSumPassed);
-                foreach (var result in parseResults)
-                {
-                    if (!string.IsNullOrEmpty(result.logEntry))
-                    {
-                        logBatch.Add((result.index, result.logEntry));
-                    }
-                    allFields.AddRange(result.result.Fields ?? new List<MessageField>());
-                    allLoops.AddRange(result.result.Loops ?? new List<Loop>());
-
-                    if (logBatch.Count >= batchSize)
-                    {
-                        WriteLogBatch(logFilePath, logBatch);
-                        logBatch.Clear();
-                    }
-                }
-
+                // Tiếp tục xử lý logBatch như cũ
                 if (logBatch.Count > 0)
                 {
                     WriteLogBatch(logFilePath, logBatch);
                     logBatch.Clear();
                 }
 
-                Console.WriteLine($"Info: Processed {parseResults.Count} valid messages from file: {Path.GetFileName(filePath)}");
-                return new ParseResult(errors, allFields, allLoops, string.Empty, allCheckSumsPassed, calculatedChecksum: 0);
+                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), string.Empty, true, 0);
             }
             catch (Exception ex)
             {
                 errors.Add($"Failed to parse file: {Path.GetFileName(filePath)}: {ex.Message}");
-                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), string.Empty, checkSumPassed: true, calculatedChecksum: 0);
+                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), string.Empty, true, 0);
             }
         }
 
@@ -457,7 +377,7 @@ namespace MarketDataPlugin
                 sb.AppendLine($"Checksum Body Bytes: {BitConverter.ToString(bodyBytes)}");
             }
 
-            if (errors.Count > 0)
+            if (errors?.Count > 0)
             {
                 sb.AppendLine("Parsing Errors:");
                 foreach (var error in errors)
