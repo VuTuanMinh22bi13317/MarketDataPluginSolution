@@ -1,18 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Text; // Added for Encoding
+using System.Text;
 using MarketDataPlugin.DEF;
 
 namespace MarketDataPlugin
 {
     public class Msg
     {
-        private readonly FixMessageParser parser;
+        private readonly MsgDef msgDef;
+        private readonly char delimiterChar = '\x01';
+        private readonly bool inMsgChecksum;
 
-        public Msg(FixMessageParser parser)
+        public Msg(MsgDef msgDef, bool inMsgChecksum = true)
         {
-            this.parser = parser ?? throw new ArgumentNullException(nameof(parser));
+            this.msgDef = msgDef ?? throw new ArgumentNullException(nameof(msgDef));
+            this.inMsgChecksum = inMsgChecksum;
         }
 
         public ParseResult? Parse(string rawMessage, List<string> errors)
@@ -23,23 +26,23 @@ namespace MarketDataPlugin
                 return null;
             }
 
-            Console.WriteLine($"Debug: Raw message: {rawMessage}");
+            Console.WriteLine($"Debug: Parsing message with MsgType: {msgDef.MsgType}");
 
-            // Step 1: Validate BeginString (tag 8)
-            if (!rawMessage.StartsWith($"8={parser.BeginString}{parser.DelimiterChar}"))
+            // Step 1: Validate BeginString
+            if (!rawMessage.StartsWith($"8={msgDef.MsgType.Split('.')[0]}{delimiterChar}"))
             {
-                errors.Add($"Invalid BeginString: Expected '8={parser.BeginString}', got '{rawMessage.Substring(0, Math.Min(10, rawMessage.Length))}'");
+                errors.Add($"Invalid BeginString: Expected '8=FIX', got '{rawMessage.Substring(0, Math.Min(5, rawMessage.Length))}'");
                 return null;
             }
 
             // Step 2: Extract BodyLength (tag 9)
-            int bodyLengthTagStart = rawMessage.IndexOf($"{parser.DelimiterChar}9=") + 2;
+            int bodyLengthTagStart = rawMessage.IndexOf($"{delimiterChar}9=") + 2;
             if (bodyLengthTagStart < 2 || bodyLengthTagStart >= rawMessage.Length)
             {
                 errors.Add("Invalid or missing BodyLength (Tag 9)");
                 return null;
             }
-            int bodyLengthTagEnd = rawMessage.IndexOf(parser.DelimiterChar, bodyLengthTagStart);
+            int bodyLengthTagEnd = rawMessage.IndexOf(delimiterChar, bodyLengthTagStart);
             if (bodyLengthTagEnd < 0)
             {
                 errors.Add("Missing delimiter after BodyLength (Tag 9)");
@@ -51,72 +54,44 @@ namespace MarketDataPlugin
                 errors.Add($"Invalid BodyLength value: '{bodyLengthStr}'");
                 return null;
             }
-            Console.WriteLine($"Debug: Found BodyLength at index {bodyLengthTagStart}: {bodyLength}");
 
-            // Step 3: Find CheckSum (tag 10) position
-            int checksumStart = rawMessage.IndexOf($"{parser.DelimiterChar}10=", bodyLengthTagEnd);
+            // Step 3: Find CheckSum (tag 10)
+            int checksumStart = rawMessage.LastIndexOf($"{delimiterChar}10=");
             if (checksumStart < 0)
             {
                 errors.Add("Missing CheckSum (Tag 10)");
                 return null;
             }
-            int checksumEnd = rawMessage.IndexOf(parser.DelimiterChar, checksumStart + 4);
-            if (checksumEnd < 0) checksumEnd = rawMessage.Length;
-            string checkSumValueRaw = rawMessage.Substring(checksumStart + 4, Math.Min(3, checksumEnd - (checksumStart + 4))).TrimEnd(parser.DelimiterChar); // Giới hạn 3 ký tự và loại bỏ SOH
-            Console.WriteLine($"Debug: Extracted CheckSum raw value: '{checkSumValueRaw}' from index {checksumStart + 4} to {checksumEnd}");
-
-            // Validate checksum value
-            if (string.IsNullOrEmpty(checkSumValueRaw) || !checkSumValueRaw.All(char.IsDigit))
+            int checksumEnd = rawMessage.Length;
+            string checkSumValueRaw = rawMessage.Substring(checksumStart + 4, Math.Min(3, checksumEnd - (checksumStart + 4))).TrimEnd(delimiterChar);
+            if (!int.TryParse(checkSumValueRaw, out int expectedChecksum))
             {
-                errors.Add($"Invalid CheckSum (Tag 10) value: '{checkSumValueRaw}' (expected numeric)");
+                errors.Add($"Invalid CheckSum value: '{checkSumValueRaw}'");
                 return null;
             }
 
-            // Step 4: Validate checksum if enabled (no exception, just record result)
-            bool checkSumPassed = !parser.InMsgChecksum;
-            int calculated = 0;
-            string expectedCheckSum = checkSumValueRaw.PadLeft(3, '0'); // Padding về 3 chữ số
-            if (parser.InMsgChecksum)
+            // Step 4: Validate checksum if enabled
+            bool checkSumPassed = !inMsgChecksum;
+            int calculatedChecksum = 0;
+            if (inMsgChecksum)
             {
-                int checksumTagStart = rawMessage.IndexOf($"{parser.DelimiterChar}10=", 0);
-                if (checksumTagStart >= 0)
+                string messageForChecksum = rawMessage.Substring(0, checksumStart);
+                byte[] messageBytes = Encoding.ASCII.GetBytes(messageForChecksum);
+                calculatedChecksum = CalculateCheckSum(messageBytes);
+                checkSumPassed = (calculatedChecksum % 256 == expectedChecksum);
+                if (!checkSumPassed)
                 {
-                    string messageForChecksum = rawMessage.Substring(0, checksumTagStart); // Chỉ lấy đến trước tag 10
-                    byte[] messageBytes = Encoding.ASCII.GetBytes(messageForChecksum);
-                    calculated = FixMessageParser.CalculateCheckSum(messageBytes);
-                    Console.WriteLine($"Debug: Checksum message bytes (length {messageBytes.Length}): {BitConverter.ToString(messageBytes)}");
-                    Console.WriteLine($"Debug: Expected CheckSum (padded): {expectedCheckSum}");
-
-                    int checkSum = int.Parse(expectedCheckSum);
-                    checkSumPassed = (calculated % 256 == checkSum);
-                    if (!checkSumPassed)
-                    {
-                        Console.WriteLine($"Debug: Checksum mismatch: Calculated {calculated % 256}, Expected {checkSum}");
-                        // Không thêm lỗi vào errors, chỉ ghi log
-                    }
+                    Console.WriteLine($"Debug: Checksum mismatch: Calculated {calculatedChecksum % 256}, Expected {expectedChecksum}");
                 }
             }
 
-            // Step 5: Look up MsgType in specs
-            string? msgType = GetMsgType(rawMessage);
-            if (string.IsNullOrEmpty(msgType))
-            {
-                errors.Add("Invalid MsgType: Could not extract MsgType (tag 35)");
-                return null;
-            }
-            if (!parser.MsgDefs.TryGetValue(msgType, out MsgDef? msgDef))
-            {
-                errors.Add($"Invalid MsgType: '{msgType}' not found in message definitions");
-                return null;
-            }
-
-            // Step 6: Parse the message into fields and loops
+            // Step 5: Parse fields and loops
             var fields = new List<MessageField>();
             var loops = new List<Loop>();
             var unparsedFields = new List<string>();
-            string[] fieldPairs = rawMessage.Split(parser.DelimiterChar);
-            int currentIndex = 0;
+            string[] fieldPairs = rawMessage.Split(delimiterChar);
 
+            int currentIndex = 0;
             while (currentIndex < fieldPairs.Length)
             {
                 string pair = fieldPairs[currentIndex];
@@ -126,49 +101,34 @@ namespace MarketDataPlugin
                     string tag = pair.Substring(0, equalsIndex);
                     string value = pair.Substring(equalsIndex + 1);
 
-                    if (tag == "10")
+                    if (tag == "10") // Kết thúc tại checksum
                     {
-                        var fieldDef = new FieldDef(tag, "CheckSum") { Type = FieldType.String };
-                        var field = ParseField(tag, value, fieldDef, msgType);
-                        fields.Add(field);
+                        fields.Add(new MessageField { Tag = tag, Name = "CheckSum", Value = value, Type = "String" });
                         break;
                     }
 
-                    if (parser.HeaderFields.TryGetValue(tag, out FieldDef? headerField))
+                    if (msgDef.GetChildren().TryGetValue(tag, out object? child))
                     {
-                        var field = ParseField(tag, value, headerField, msgType);
-                        fields.Add(field);
-                    }
-                    else if (msgDef.GetChildren().TryGetValue(tag, out object? childObj))
-                    {
-                        if (childObj is FieldDef fieldDef)
+                        if (child is FieldDef fieldDef)
                         {
-                            var field = ParseField(tag, value, fieldDef, msgType);
+                            var field = ParseField(tag, value, fieldDef);
                             fields.Add(field);
                         }
-                        else if (childObj is LoopDef loopDef)
+                        else if (child is LoopDef loopDef)
                         {
-                            string counterTag = loopDef.Counter ?? string.Empty;
-                            if (pair.StartsWith($"{counterTag}="))
+                            if (pair.StartsWith($"{loopDef.Counter}="))
                             {
                                 if (int.TryParse(value, out int loopCount) && loopCount > 0)
                                 {
                                     currentIndex++;
-                                    int expectedLoopCount = loopCount;
-                                    string loopStartTag = "83";
-
-                                    for (int loopEntry = 0; loopEntry < expectedLoopCount && currentIndex < fieldPairs.Length; loopEntry++)
+                                    for (int loopEntry = 0; loopEntry < loopCount && currentIndex < fieldPairs.Length; loopEntry++)
                                     {
-                                        var currentLoop = new Loop(counterTag, loopDef.Name ?? string.Empty, counterTag);
-                                        foreach (var child in loopDef.GetChildren())
-                                        {
-                                            currentLoop.AddChild(child.Key, child.Value);
-                                        }
-
+                                        var currentLoop = new Loop(loopDef.Counter, loopDef.Name, ""); // Loại bỏ LoopTag, thay bằng chuỗi rỗng
                                         bool loopStarted = false;
                                         while (currentIndex < fieldPairs.Length && !loopStarted)
                                         {
-                                            if (fieldPairs[currentIndex].StartsWith($"{loopStartTag}="))
+                                            // Tìm điểm bắt đầu loop dựa trên tag đầu tiên của loop (cần điều chỉnh logic nếu có)
+                                            if (loopDef.GetChildren().ContainsKey(fieldPairs[currentIndex].Split('=')[0]))
                                             {
                                                 loopStarted = true;
                                                 break;
@@ -176,10 +136,7 @@ namespace MarketDataPlugin
                                             currentIndex++;
                                         }
 
-                                        if (!loopStarted)
-                                        {
-                                            break;
-                                        }
+                                        if (!loopStarted) break;
 
                                         while (currentIndex < fieldPairs.Length)
                                         {
@@ -190,15 +147,11 @@ namespace MarketDataPlugin
                                                 string loopTag = loopPair.Substring(0, loopEqualsIndex);
                                                 string loopValue = loopPair.Substring(loopEqualsIndex + 1);
 
-                                                if ((loopTag == loopStartTag && currentLoop.ParsedFields.Count > 0) || loopTag == "10")
-                                                {
-                                                    if (loopTag == loopStartTag) currentIndex--;
-                                                    break;
-                                                }
+                                                if (loopTag == "10") break;
 
                                                 if (loopDef.GetChildren().TryGetValue(loopTag, out FieldDef? loopFieldDef))
                                                 {
-                                                    var field = ParseField(loopTag, loopValue, loopFieldDef, msgType);
+                                                    var field = ParseField(loopTag, loopValue, loopFieldDef);
                                                     currentLoop.AddParsedField(field);
                                                 }
                                                 else
@@ -240,17 +193,13 @@ namespace MarketDataPlugin
                 }
             }
 
-            string unparsedText = unparsedFields.Count > 0 ? string.Join(parser.DelimiterChar.ToString(), unparsedFields) : string.Empty;
-            return new ParseResult(errors, fields, loops, unparsedText, checkSumPassed, calculated);
+            string unparsedText = unparsedFields.Count > 0 ? string.Join(delimiterChar.ToString(), unparsedFields) : string.Empty;
+            return new ParseResult(errors, fields, loops, unparsedText, checkSumPassed, calculatedChecksum);
         }
 
-        private MessageField ParseField(string tag, string value, FieldDef fieldDef, string msgType)
+        private MessageField ParseField(string tag, string value, FieldDef fieldDef)
         {
-            string? dateFormat = null;
-            if (fieldDef.Type == FieldType.Date && parser.DateFormats.TryGetValue($"{msgType}:{tag}", out string? format))
-            {
-                dateFormat = format;
-            }
+            string? dateFormat = fieldDef.Type == FieldType.Date ? fieldDef.DateFormat : null;
             object? parsedValue = ParseFieldValue(value, fieldDef.Type, dateFormat, fieldDef.TimeZoneEffected);
             return new MessageField
             {
@@ -259,7 +208,7 @@ namespace MarketDataPlugin
                 Value = value,
                 Type = fieldDef.Type.ToString(),
                 DataField = fieldDef.DataField,
-                ParsedValue = parsedValue
+                ParsedValue = parsedValue ?? string.Empty // Xử lý null
             };
         }
 
@@ -275,27 +224,13 @@ namespace MarketDataPlugin
                     {
                         if (!string.IsNullOrEmpty(dateFormat))
                         {
-                            if (dateFormat == "HHmmssfff" || dateFormat == "HHmmss")
-                            {
-                                DateTime baseDate = DateTime.UtcNow.Date;
-                                DateTime time = DateTime.ParseExact(value, dateFormat, CultureInfo.InvariantCulture);
-                                DateTime combined = baseDate.Add(time.TimeOfDay);
-                                if (timeZoneEffected)
-                                    combined = combined.AddHours(7);
-                                return combined;
-                            }
-                            else
-                            {
-                                DateTime dt = DateTime.ParseExact(value, dateFormat, CultureInfo.InvariantCulture);
-                                if (timeZoneEffected)
-                                    dt = dt.AddHours(7);
-                                return dt;
-                            }
+                            DateTime dt = DateTime.ParseExact(value, dateFormat, CultureInfo.InvariantCulture);
+                            if (timeZoneEffected) dt = dt.AddHours(7);
+                            return dt;
                         }
                         else if (DateTime.TryParse(value, out DateTime dtDefault))
                         {
-                            if (timeZoneEffected)
-                                dtDefault = dtDefault.AddHours(7);
+                            if (timeZoneEffected) dtDefault = dtDefault.AddHours(7);
                             return dtDefault;
                         }
                     }
@@ -308,16 +243,14 @@ namespace MarketDataPlugin
             }
         }
 
-        public string? GetMsgType(string message)
+        private int CalculateCheckSum(byte[] messageBytes)
         {
-            string[] parts = message.Split(parser.DelimiterChar);
-            foreach (var part in parts)
+            int checksum = 0;
+            foreach (byte b in messageBytes)
             {
-                if (part.StartsWith("35=")) return part.Substring(3);
+                checksum += b;
             }
-            return null;
+            return checksum % 256;
         }
-
-        private readonly Dictionary<string, object> loopFieldsDict = new Dictionary<string, object>();
     }
 }
