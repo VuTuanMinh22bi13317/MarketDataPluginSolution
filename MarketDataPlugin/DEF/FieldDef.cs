@@ -8,8 +8,8 @@
         }
 
         public new int Tag { get; set; } // Explicitly hide inherited Tag
+        public new string Name { get; set; } = string.Empty; // Explicitly hide inherited Name
         public bool TimeZoneEffected { get; set; } = false;
-        public string Name { get; set; } = string.Empty;
         public DataDirection Direction { get; set; } = DataDirection.InOut;
         public string DataField { get; set; } = string.Empty;
         public int DataIdx { get; set; } = -1;
