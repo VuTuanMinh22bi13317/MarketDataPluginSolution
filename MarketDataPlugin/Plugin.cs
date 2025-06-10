@@ -1,23 +1,26 @@
 ﻿using MarketDataPlugin;
 using System;
-using System.Collections.Generic;
 
 namespace MarketDataPlugin
 {
     public class Plugin
     {
-        private readonly FixMessageParser parser;
+        private readonly string _configPath;
 
         public Plugin(string configPath)
         {
-            parser = new FixMessageParser(configPath);
+            _configPath = configPath ?? throw new ArgumentNullException(nameof(configPath));
+            Specs.LoadConfig(_configPath); // Tải cấu hình khi khởi tạo Plugin
         }
 
         public void ProcessFolder(string folderPath)
         {
+            if (string.IsNullOrEmpty(folderPath))
+                throw new ArgumentException("Folder path cannot be null or empty.", nameof(folderPath));
+
             Console.WriteLine("Processing folder: " + folderPath);
-            parser.DisplayConfig();
-            foreach (var result in parser.ParseFolder(folderPath))
+            Specs.DisplayConfig();
+            foreach (var result in Specs.ParseFolder(folderPath))
             {
                 Console.WriteLine($"Processed file: {result.fileName}");
                 if (result.result.Errors.Count > 0)

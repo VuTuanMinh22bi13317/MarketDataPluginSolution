@@ -8,76 +8,80 @@ namespace MarketDataPlugin
 {
     public class Msg
     {
-        private readonly MsgDef msgDef;
-        private readonly char delimiterChar = '\x01';
-        private readonly bool inMsgChecksum;
+        private readonly MsgDef _msgDef;
+        private readonly Dictionary<string, MsgDef>? _msgDefs;
 
-        public Msg(MsgDef msgDef, bool inMsgChecksum = true)
+        public Msg(MsgDef msgDef, Dictionary<string, MsgDef>? msgDefs)
         {
-            this.msgDef = msgDef ?? throw new ArgumentNullException(nameof(msgDef));
-            this.inMsgChecksum = inMsgChecksum;
+            _msgDef = msgDef ?? throw new ArgumentNullException(nameof(msgDef));
+            _msgDefs = msgDefs ?? throw new ArgumentNullException(nameof(msgDefs));
         }
 
-        public ParseResult? Parse(string rawMessage, List<string> errors)
+        public ParseResult Parse(string rawMessage, List<string> errors)
         {
             if (string.IsNullOrEmpty(rawMessage))
             {
                 errors.Add("Empty message");
-                return null;
+                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), string.Empty, true, 0);
             }
 
-            Console.WriteLine($"Debug: Parsing message with MsgType: {msgDef.MsgType}");
+            Console.WriteLine($"Debug: Parsing message with MsgType: {_msgDef.MsgType}");
 
             // Step 1: Validate BeginString
-            if (!rawMessage.StartsWith($"8={msgDef.MsgType.Split('.')[0]}{delimiterChar}"))
+            string expectedBeginString = $"8={Specs.BeginString}{Specs.DelimiterChar}";
+            if (!rawMessage.StartsWith(expectedBeginString))
             {
-                errors.Add($"Invalid BeginString: Expected '8=FIX', got '{rawMessage.Substring(0, Math.Min(5, rawMessage.Length))}'");
-                return null;
+                string actualBeginString = rawMessage.Length >= 8 ? rawMessage.Substring(0, Math.Min(8, rawMessage.IndexOf(Specs.DelimiterChar) != -1 ? rawMessage.IndexOf(Specs.DelimiterChar) : 8)) : rawMessage;
+                errors.Add($"Invalid BeginString: Expected '{expectedBeginString}', got '{actualBeginString}'");
+                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
             }
 
             // Step 2: Extract BodyLength (tag 9)
-            int bodyLengthTagStart = rawMessage.IndexOf($"{delimiterChar}9=") + 2;
+            int bodyLengthTagStart = rawMessage.IndexOf($"{Specs.DelimiterChar}9=") + 2;
             if (bodyLengthTagStart < 2 || bodyLengthTagStart >= rawMessage.Length)
             {
                 errors.Add("Invalid or missing BodyLength (Tag 9)");
-                return null;
+                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
             }
-            int bodyLengthTagEnd = rawMessage.IndexOf(delimiterChar, bodyLengthTagStart);
+            int bodyLengthTagEnd = rawMessage.IndexOf(Specs.DelimiterChar, bodyLengthTagStart);
             if (bodyLengthTagEnd < 0)
             {
                 errors.Add("Missing delimiter after BodyLength (Tag 9)");
-                return null;
+                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
             }
             string bodyLengthStr = rawMessage.Substring(bodyLengthTagStart, bodyLengthTagEnd - bodyLengthTagStart);
             if (!int.TryParse(bodyLengthStr, out int bodyLength))
             {
                 errors.Add($"Invalid BodyLength value: '{bodyLengthStr}'");
-                return null;
+                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
             }
 
-            // Step 3: Find CheckSum (tag 10)
-            int checksumStart = rawMessage.LastIndexOf($"{delimiterChar}10=");
-            if (checksumStart < 0)
+            // Step 3: Extract and validate CheckSum (tag 10)
+            int checksumStart = rawMessage.LastIndexOf($"{Specs.DelimiterChar}10=");
+            bool hasValidChecksum = checksumStart >= 0;
+            int expectedChecksum = 0;
+            if (hasValidChecksum)
+            {
+                int checksumEnd = rawMessage.Length;
+                string checkSumValueRaw = rawMessage.Substring(checksumStart + 4, Math.Min(3, checksumEnd - (checksumStart + 4))).TrimEnd(Specs.DelimiterChar);
+                if (!int.TryParse(checkSumValueRaw, out expectedChecksum))
+                {
+                    errors.Add($"Invalid CheckSum value: '{checkSumValueRaw}'");
+                    hasValidChecksum = false;
+                }
+            }
+            else
             {
                 errors.Add("Missing CheckSum (Tag 10)");
-                return null;
-            }
-            int checksumEnd = rawMessage.Length;
-            string checkSumValueRaw = rawMessage.Substring(checksumStart + 4, Math.Min(3, checksumEnd - (checksumStart + 4))).TrimEnd(delimiterChar);
-            if (!int.TryParse(checkSumValueRaw, out int expectedChecksum))
-            {
-                errors.Add($"Invalid CheckSum value: '{checkSumValueRaw}'");
-                return null;
             }
 
-            // Step 4: Validate checksum if enabled
-            bool checkSumPassed = !inMsgChecksum;
+            // Step 4: Calculate and validate checksum
+            bool checkSumPassed = !Specs.InMsgChecksum || !hasValidChecksum; // Mặc định true nếu không kiểm tra hoặc thiếu checksum
             int calculatedChecksum = 0;
-            if (inMsgChecksum)
+            if (Specs.InMsgChecksum && hasValidChecksum)
             {
-                string messageForChecksum = rawMessage.Substring(0, checksumStart);
-                byte[] messageBytes = Encoding.ASCII.GetBytes(messageForChecksum);
-                calculatedChecksum = CalculateCheckSum(messageBytes);
+                string messageForChecksum = checksumStart > 0 ? rawMessage.Substring(0, checksumStart) : rawMessage;
+                calculatedChecksum = CalculateCheckSum(Encoding.ASCII.GetBytes(messageForChecksum));
                 checkSumPassed = (calculatedChecksum % 256 == expectedChecksum);
                 if (!checkSumPassed)
                 {
@@ -89,9 +93,16 @@ namespace MarketDataPlugin
             var fields = new List<MessageField>();
             var loops = new List<Loop>();
             var unparsedFields = new List<string>();
-            string[] fieldPairs = rawMessage.Split(delimiterChar);
+            string[] fieldPairs = rawMessage.Split(Specs.DelimiterChar);
 
             int currentIndex = 0;
+            MsgDef? headerDef = _msgDefs?.GetValueOrDefault("Header");
+            if (headerDef == null)
+            {
+                errors.Add("Header definition not found in configuration");
+                return new ParseResult(errors, fields, loops, string.Join(Specs.DelimiterChar.ToString(), unparsedFields), checkSumPassed, calculatedChecksum);
+            }
+
             while (currentIndex < fieldPairs.Length)
             {
                 string pair = fieldPairs[currentIndex];
@@ -101,20 +112,45 @@ namespace MarketDataPlugin
                     string tag = pair.Substring(0, equalsIndex);
                     string value = pair.Substring(equalsIndex + 1);
 
-                    if (tag == "10") // Kết thúc tại checksum
+                    Console.WriteLine($"Debug: Processing pair: {pair}");
+
+                    // Kiểm tra Header
+                    if (headerDef.GetChildren().TryGetValue(tag, out object? headerChild))
                     {
-                        fields.Add(new MessageField { Tag = tag, Name = "CheckSum", Value = value, Type = "String" });
+                        if (headerChild is FieldDef headerFieldDef)
+                        {
+                            var field = ParseField(tag, value, headerFieldDef);
+                            fields.Add(field);
+                            Console.WriteLine($"Debug: Added header field: Tag={tag}, Name={headerFieldDef.Name}, Value={value}");
+                            currentIndex++;
+                            continue;
+                        }
+                    }
+
+                    if (tag == "10") // Xử lý CheckSum cuối cùng
+                    {
+                        if (headerDef.GetChildren().TryGetValue("10", out object? checksumChild))
+                        {
+                            if (checksumChild is FieldDef checksumFieldDef)
+                            {
+                                var field = ParseField(tag, value, checksumFieldDef);
+                                fields.Add(field);
+                                Console.WriteLine($"Debug: Added checksum field: Tag={tag}, Name={checksumFieldDef.Name}, Value={value}");
+                            }
+                        }
                         break;
                     }
 
-                    if (msgDef.GetChildren().TryGetValue(tag, out object? child))
+                    // Kiểm tra Body của MsgType
+                    if (_msgDef.GetChildren().TryGetValue(tag, out object? bodyChild))
                     {
-                        if (child is FieldDef fieldDef)
+                        if (bodyChild is FieldDef bodyFieldDef)
                         {
-                            var field = ParseField(tag, value, fieldDef);
+                            var field = ParseField(tag, value, bodyFieldDef);
                             fields.Add(field);
+                            Console.WriteLine($"Debug: Added body field: Tag={tag}, Name={bodyFieldDef.Name}, Value={value}");
                         }
-                        else if (child is LoopDef loopDef)
+                        else if (bodyChild is LoopDef loopDef)
                         {
                             if (pair.StartsWith($"{loopDef.Counter}="))
                             {
@@ -123,12 +159,12 @@ namespace MarketDataPlugin
                                     currentIndex++;
                                     for (int loopEntry = 0; loopEntry < loopCount && currentIndex < fieldPairs.Length; loopEntry++)
                                     {
-                                        var currentLoop = new Loop(loopDef.Counter, loopDef.Name, ""); // Loại bỏ LoopTag, thay bằng chuỗi rỗng
+                                        var currentLoop = new Loop(loopDef.Counter, loopDef.Name, value ?? "0");
                                         bool loopStarted = false;
+                                        string firstLoopTag = loopDef.GetChildren().Keys.FirstOrDefault();
                                         while (currentIndex < fieldPairs.Length && !loopStarted)
                                         {
-                                            // Tìm điểm bắt đầu loop dựa trên tag đầu tiên của loop (cần điều chỉnh logic nếu có)
-                                            if (loopDef.GetChildren().ContainsKey(fieldPairs[currentIndex].Split('=')[0]))
+                                            if (firstLoopTag != null && fieldPairs[currentIndex].StartsWith($"{firstLoopTag}="))
                                             {
                                                 loopStarted = true;
                                                 break;
@@ -153,10 +189,12 @@ namespace MarketDataPlugin
                                                 {
                                                     var field = ParseField(loopTag, loopValue, loopFieldDef);
                                                     currentLoop.AddParsedField(field);
+                                                    Console.WriteLine($"Debug: Added loop field: Tag={loopTag}, Name={loopFieldDef.Name}, Value={loopValue}");
                                                 }
                                                 else
                                                 {
                                                     unparsedFields.Add(loopPair);
+                                                    Console.WriteLine($"Debug: Unparsed loop field: {loopPair}");
                                                 }
                                             }
                                             currentIndex++;
@@ -175,25 +213,36 @@ namespace MarketDataPlugin
                     else
                     {
                         unparsedFields.Add(pair);
+                        Console.WriteLine($"Debug: Unparsed field: {pair}");
                     }
                 }
                 currentIndex++;
             }
 
             // Check for required fields
-            foreach (var child in msgDef.GetChildren())
+            foreach (var child in _msgDef.GetChildren())
             {
                 if (child.Value is FieldDef fieldDef && fieldDef.IsRequired)
                 {
                     if (!fields.Exists(f => f.Tag == fieldDef.Tag.ToString()))
                     {
                         errors.Add($"Missing required field: Tag {fieldDef.Tag} ({fieldDef.Name})");
-                        return null;
+                    }
+                }
+            }
+            foreach (var child in headerDef.GetChildren())
+            {
+                if (child.Value is FieldDef fieldDef && fieldDef.IsRequired)
+                {
+                    if (!fields.Exists(f => f.Tag == fieldDef.Tag.ToString()))
+                    {
+                        errors.Add($"Missing required header field: Tag {fieldDef.Tag} ({fieldDef.Name})");
                     }
                 }
             }
 
-            string unparsedText = unparsedFields.Count > 0 ? string.Join(delimiterChar.ToString(), unparsedFields) : string.Empty;
+            string unparsedText = unparsedFields.Count > 0 ? string.Join(Specs.DelimiterChar.ToString(), unparsedFields) : string.Empty;
+            Console.WriteLine($"Debug: Total fields parsed: {fields.Count}, Unparsed fields: {unparsedFields.Count}");
             return new ParseResult(errors, fields, loops, unparsedText, checkSumPassed, calculatedChecksum);
         }
 
@@ -208,7 +257,7 @@ namespace MarketDataPlugin
                 Value = value,
                 Type = fieldDef.Type.ToString(),
                 DataField = fieldDef.DataField,
-                ParsedValue = parsedValue ?? string.Empty // Xử lý null
+                ParsedValue = parsedValue ?? string.Empty
             };
         }
 

@@ -10,7 +10,7 @@ namespace FixMessageParserApp
         static void Main(string[] args)
         {
             // Show app header with current date and time
-            Console.WriteLine("=== FIX Message Parser App ===");
+            Console.WriteLine("=== Specs App ===");
             Console.WriteLine($"Current Date and Time: {DateTime.Now:yyyy-MM-dd HH:mm:ss} (UTC+07:00)");
             Console.WriteLine();
 
@@ -27,12 +27,12 @@ namespace FixMessageParserApp
                     return;
                 }
 
-                // Create a parser using the config file directly
-                var parser = new FixMessageParser(configFile);
+                // Load configuration
+                Specs.LoadConfig(configFile);
 
                 // Show parser config for debugging
                 Console.WriteLine("\nParser Configuration:");
-                parser.DisplayConfig();
+                Specs.DisplayConfig();
 
                 // Create output directory and file to save results
                 string outputDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "output");
@@ -50,7 +50,7 @@ namespace FixMessageParserApp
                     writer.WriteLine();
 
                     // Loop through each file and parse it
-                    var results = parser.ParseFolder(folderPath);
+                    var results = Specs.ParseFolder(folderPath);
                     foreach (var (fileName, result) in results)
                     {
                         string displayFileName = Path.GetFileName(fileName);
