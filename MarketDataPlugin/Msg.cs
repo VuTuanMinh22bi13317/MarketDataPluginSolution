@@ -9,272 +9,352 @@ namespace MarketDataPlugin
     public class Msg
     {
         private readonly MsgDef _msgDef;
-        private readonly Dictionary<string, MsgDef>? _msgDefs;
+        public string Raw { get; }
+        public MsgDef Def => _msgDef ?? throw new InvalidOperationException("MsgDef is not initialized.");
+        public List<Field> Fields { get; } = new List<Field>();
+        public List<Field> DataFields { get; } = new List<Field>();
+        public List<Loop> Loops { get; } = new List<Loop>();
+        public Field? CheckSumField { get; set; }
+        public Field? MsgSeqNumField { get; set; }
+        public string UnparsedText { get; set; } = string.Empty;
+        public bool CheckSumPassed { get; set; } = true;
+        public long MsgSeqNum => MsgSeqNumField?.Value != null && long.TryParse(MsgSeqNumField.Value.ToString(), out long seq) ? seq : 0;
 
-        public Msg(MsgDef msgDef, Dictionary<string, MsgDef>? msgDefs)
+        private const char DELIMITER_CHAR = '\x01';
+
+        static int _GetMsgLength(string raw, int offset)
         {
-            _msgDef = msgDef ?? throw new ArgumentNullException(nameof(msgDef));
-            _msgDefs = msgDefs ?? throw new ArgumentNullException(nameof(msgDefs));
+            try
+            {
+                int bodyLengthIdx = raw.IndexOf(DELIMITER_CHAR + "9=", offset);
+                if (bodyLengthIdx < 0) throw new InvalidDataException("Missing BodyLength (Tag 9) in message.");
+                bodyLengthIdx += 3;
+                int nextFieldIdx = raw.IndexOf(DELIMITER_CHAR, bodyLengthIdx);
+                if (nextFieldIdx < 0) throw new InvalidDataException("Missing delimiter after BodyLength (Tag 9).");
+                string bodyLength = raw.Substring(bodyLengthIdx, nextFieldIdx - bodyLengthIdx);
+                return int.Parse(bodyLength) + nextFieldIdx - offset + 1 + 7;
+            }
+            catch (FormatException ex)
+            {
+                throw new InvalidDataException("Invalid BodyLength value format.", ex);
+            }
+        }
+
+        public static int GetMsgLength(string raw, int offset)
+        {
+            try
+            {
+                int beginStringIdx = raw.IndexOf("8=" + Specs.BeginString, offset);
+                if (beginStringIdx != offset) throw new InvalidDataException($"BeginString (Tag 8) must start at offset {offset}, found at {beginStringIdx}.");
+                int checkSumIdx = raw.IndexOf(DELIMITER_CHAR + "10=", beginStringIdx + 3);
+                if (checkSumIdx < 0) return _GetMsgLength(raw, offset);
+                int eomIdx = raw.IndexOf(DELIMITER_CHAR, checkSumIdx + 3);
+                if (eomIdx < 0) return _GetMsgLength(raw, offset);
+                return eomIdx - beginStringIdx + 1;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException("Failed to calculate message length.", ex);
+            }
+        }
+
+        static string _GetMsgType(string raw)
+        {
+            try
+            {
+                int startIdx = raw.IndexOf(DELIMITER_CHAR + "35=");
+                if (startIdx < 0) throw new InvalidDataException("Missing MsgType (Tag 35) in message.");
+                startIdx += 4;
+                int endIdx = raw.IndexOf(DELIMITER_CHAR, startIdx);
+                if (endIdx < 0) throw new InvalidDataException("Missing delimiter after MsgType (Tag 35).");
+                return raw.Substring(startIdx, endIdx - startIdx);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException("Failed to extract MsgType.", ex);
+            }
+        }
+
+        public Msg(MsgDef def, string raw)
+        {
+            _msgDef = def ?? throw new ArgumentNullException(nameof(def));
+            Raw = raw?.Trim() ?? throw new ArgumentNullException(nameof(raw));
+            try
+            {
+                List<TVP> pairs = TVP.FromString(Raw) ?? throw new InvalidDataException("Failed to parse raw message into TVP pairs.");
+                if (pairs.Count == 0) throw new InvalidDataException("No valid tag-value pairs found in message.");
+
+                var lastTVP = pairs[pairs.Count - 1];
+                if (lastTVP.Tag == "10")
+                {
+                    CheckSumField = new Field("10", "CheckSum", FieldType.Int, true) { Value = lastTVP.Value };
+                    pairs.RemoveAt(pairs.Count - 1);
+                }
+
+                foreach (MsgChildDef childDef in _msgDef.Children)
+                {
+                    if (childDef.GetType() == typeof(LoopDef))
+                    {
+                        var loopDef = (LoopDef?)_msgDef.GetChildren().Values.FirstOrDefault(v => v == childDef && v.GetType() == typeof(LoopDef));
+                        if (loopDef != null)
+                        {
+                            Loops.Clear();
+                            while (pairs.Count > 0)
+                            {
+                                int startIdx = 0;
+                                for (; startIdx < pairs.Count; startIdx++)
+                                {
+                                    if (loopDef.Children.ContainsKey(pairs[startIdx].Tag)) break;
+                                }
+                                if (startIdx == pairs.Count) break;
+                                var loop = new Loop(loopDef.Counter ?? "0", loopDef.Name, pairs, startIdx);
+                                if (loop.ParsedFields.Count > 0) Loops.Add(loop);
+                                pairs.RemoveRange(0, startIdx + loop.ParsedFields.Count);
+                            }
+                        }
+                    }
+                    else if (childDef.GetType() == typeof(FieldDef))
+                    {
+                        var fieldDef = (FieldDef)childDef;
+                        var tvp = pairs.Find(p => p.Tag == fieldDef.Tag.ToString());
+                        if (tvp != null)
+                        {
+                            pairs.Remove(tvp);
+                            var field = new Field(fieldDef.Tag.ToString(), fieldDef.Name, fieldDef.Type, fieldDef.IsRequired)
+                            {
+                                Value = tvp.Value ?? fieldDef.DefaultValue
+                            };
+                            Fields.Add(field);
+                            if (!string.IsNullOrEmpty(field.Value)) DataFields.Add(field);
+                        }
+                    }
+                }
+
+                if (pairs.Count > 0)
+                {
+                    UnparsedText = string.Join(DELIMITER_CHAR.ToString(), pairs.Select(p => p.Raw));
+                }
+
+                _AssignFields();
+                if (Specs.InMsgChecksum)
+                {
+                    int trailerIdx = Raw.IndexOf("10=");
+                    string checksumRaw = trailerIdx > 0 ? Raw.Substring(0, trailerIdx) : Raw;
+                    CheckSumPassed = CheckSum == _CalculateCheckSum(checksumRaw);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException("Error processing message data. All data should be clean at this stage.", ex);
+            }
         }
 
         public ParseResult Parse(string rawMessage, List<string> errors)
         {
-            if (string.IsNullOrEmpty(rawMessage))
+            try
             {
-                errors.Add("Empty message");
-                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), string.Empty, true, 0);
-            }
+                if (string.IsNullOrEmpty(rawMessage)) throw new InvalidDataException("Empty message received.");
 
-            Console.WriteLine($"Debug: Parsing message with MsgType: {_msgDef.MsgType}");
+                string expectedBeginString = $"8={Specs.BeginString}{Specs.DelimiterChar}";
+                if (!rawMessage.StartsWith(expectedBeginString))
+                    throw new InvalidDataException($"Invalid BeginString: Expected '{expectedBeginString}', got '{rawMessage.Substring(0, Math.Min(8, rawMessage.IndexOf(Specs.DelimiterChar)))}'");
 
-            // Step 1: Validate BeginString
-            string expectedBeginString = $"8={Specs.BeginString}{Specs.DelimiterChar}";
-            if (!rawMessage.StartsWith(expectedBeginString))
-            {
-                string actualBeginString = rawMessage.Length >= 8 ? rawMessage.Substring(0, Math.Min(8, rawMessage.IndexOf(Specs.DelimiterChar) != -1 ? rawMessage.IndexOf(Specs.DelimiterChar) : 8)) : rawMessage;
-                errors.Add($"Invalid BeginString: Expected '{expectedBeginString}', got '{actualBeginString}'");
-                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
-            }
+                int bodyLengthTagStart = rawMessage.IndexOf($"{Specs.DelimiterChar}9=") + 2;
+                if (bodyLengthTagStart < 2 || bodyLengthTagStart >= rawMessage.Length)
+                    throw new InvalidDataException("Invalid or missing BodyLength (Tag 9).");
+                int bodyLengthTagEnd = rawMessage.IndexOf(Specs.DelimiterChar, bodyLengthTagStart);
+                if (bodyLengthTagEnd < 0) throw new InvalidDataException("Missing delimiter after BodyLength (Tag 9).");
+                string bodyLengthStr = rawMessage.Substring(bodyLengthTagStart, bodyLengthTagEnd - bodyLengthTagStart);
+                if (!int.TryParse(bodyLengthStr, out int bodyLength))
+                    throw new InvalidDataException($"Invalid BodyLength value: '{bodyLengthStr}'");
 
-            // Step 2: Extract BodyLength (tag 9)
-            int bodyLengthTagStart = rawMessage.IndexOf($"{Specs.DelimiterChar}9=") + 2;
-            if (bodyLengthTagStart < 2 || bodyLengthTagStart >= rawMessage.Length)
-            {
-                errors.Add("Invalid or missing BodyLength (Tag 9)");
-                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
-            }
-            int bodyLengthTagEnd = rawMessage.IndexOf(Specs.DelimiterChar, bodyLengthTagStart);
-            if (bodyLengthTagEnd < 0)
-            {
-                errors.Add("Missing delimiter after BodyLength (Tag 9)");
-                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
-            }
-            string bodyLengthStr = rawMessage.Substring(bodyLengthTagStart, bodyLengthTagEnd - bodyLengthTagStart);
-            if (!int.TryParse(bodyLengthStr, out int bodyLength))
-            {
-                errors.Add($"Invalid BodyLength value: '{bodyLengthStr}'");
-                return new ParseResult(errors, new List<MessageField>(), new List<Loop>(), rawMessage, false, 0);
-            }
-
-            // Step 3: Extract and validate CheckSum (tag 10)
-            int checksumStart = rawMessage.LastIndexOf($"{Specs.DelimiterChar}10=");
-            bool hasValidChecksum = checksumStart >= 0;
-            int expectedChecksum = 0;
-            if (hasValidChecksum)
-            {
+                int checksumStart = rawMessage.LastIndexOf($"{Specs.DelimiterChar}10=");
+                if (checksumStart < 0) throw new InvalidDataException("Missing CheckSum (Tag 10).");
                 int checksumEnd = rawMessage.Length;
                 string checkSumValueRaw = rawMessage.Substring(checksumStart + 4, Math.Min(3, checksumEnd - (checksumStart + 4))).TrimEnd(Specs.DelimiterChar);
-                if (!int.TryParse(checkSumValueRaw, out expectedChecksum))
+                if (!int.TryParse(checkSumValueRaw, out int expectedChecksum))
+                    throw new InvalidDataException($"Invalid CheckSum value: '{checkSumValueRaw}'");
+
+                bool checkSumPassed = !Specs.InMsgChecksum;
+                int calculatedChecksum = 0;
+                if (Specs.InMsgChecksum)
                 {
-                    errors.Add($"Invalid CheckSum value: '{checkSumValueRaw}'");
-                    hasValidChecksum = false;
+                    string messageForChecksum = rawMessage.Substring(0, checksumStart);
+                    calculatedChecksum = _CalculateCheckSum(messageForChecksum);
+                    checkSumPassed = (calculatedChecksum % 256 == expectedChecksum);
+                    if (!checkSumPassed) throw new InvalidDataException($"Checksum mismatch: Calculated {calculatedChecksum % 256}, Expected {expectedChecksum}");
                 }
-            }
-            else
-            {
-                errors.Add("Missing CheckSum (Tag 10)");
-            }
 
-            // Step 4: Calculate and validate checksum
-            bool checkSumPassed = !Specs.InMsgChecksum || !hasValidChecksum; // Mặc định true nếu không kiểm tra hoặc thiếu checksum
-            int calculatedChecksum = 0;
-            if (Specs.InMsgChecksum && hasValidChecksum)
-            {
-                string messageForChecksum = checksumStart > 0 ? rawMessage.Substring(0, checksumStart) : rawMessage;
-                calculatedChecksum = CalculateCheckSum(Encoding.ASCII.GetBytes(messageForChecksum));
-                checkSumPassed = (calculatedChecksum % 256 == expectedChecksum);
-                if (!checkSumPassed)
+                var fields = new List<MessageField>();
+                var loops = new List<Loop>();
+                var unparsedFields = new List<string>();
+                string[] fieldPairs = rawMessage.Split(Specs.DelimiterChar);
+
+                int currentIndex = 0;
+
+                while (currentIndex < fieldPairs.Length)
                 {
-                    Console.WriteLine($"Debug: Checksum mismatch: Calculated {calculatedChecksum % 256}, Expected {expectedChecksum}");
-                }
-            }
+                    string pair = fieldPairs[currentIndex];
+                    int equalsIndex = pair.IndexOf('=');
+                    if (equalsIndex <= 0) throw new InvalidDataException($"Invalid field pair format at index {currentIndex}: '{pair}'");
 
-            // Step 5: Parse fields and loops
-            var fields = new List<MessageField>();
-            var loops = new List<Loop>();
-            var unparsedFields = new List<string>();
-            string[] fieldPairs = rawMessage.Split(Specs.DelimiterChar);
-
-            int currentIndex = 0;
-            MsgDef? headerDef = _msgDefs?.GetValueOrDefault("Header");
-            if (headerDef == null)
-            {
-                errors.Add("Header definition not found in configuration");
-                return new ParseResult(errors, fields, loops, string.Join(Specs.DelimiterChar.ToString(), unparsedFields), checkSumPassed, calculatedChecksum);
-            }
-
-            while (currentIndex < fieldPairs.Length)
-            {
-                string pair = fieldPairs[currentIndex];
-                int equalsIndex = pair.IndexOf('=');
-                if (equalsIndex > 0)
-                {
                     string tag = pair.Substring(0, equalsIndex);
                     string value = pair.Substring(equalsIndex + 1);
 
-                    Console.WriteLine($"Debug: Processing pair: {pair}");
-
-                    // Kiểm tra Header
-                    if (headerDef.GetChildren().TryGetValue(tag, out object? headerChild))
+                    if (tag == "10" && _msgDef.CheckSum != null)
                     {
-                        if (headerChild is FieldDef headerFieldDef)
-                        {
-                            var field = ParseField(tag, value, headerFieldDef);
-                            fields.Add(field);
-                            Console.WriteLine($"Debug: Added header field: Tag={tag}, Name={headerFieldDef.Name}, Value={value}");
-                            currentIndex++;
-                            continue;
-                        }
-                    }
-
-                    if (tag == "10") // Xử lý CheckSum cuối cùng
-                    {
-                        if (headerDef.GetChildren().TryGetValue("10", out object? checksumChild))
-                        {
-                            if (checksumChild is FieldDef checksumFieldDef)
-                            {
-                                var field = ParseField(tag, value, checksumFieldDef);
-                                fields.Add(field);
-                                Console.WriteLine($"Debug: Added checksum field: Tag={tag}, Name={checksumFieldDef.Name}, Value={value}");
-                            }
-                        }
+                        fields.Add(ParseField(tag, value, _msgDef.CheckSum));
                         break;
                     }
 
-                    // Kiểm tra Body của MsgType
                     if (_msgDef.GetChildren().TryGetValue(tag, out object? bodyChild))
                     {
                         if (bodyChild is FieldDef bodyFieldDef)
                         {
-                            var field = ParseField(tag, value, bodyFieldDef);
-                            fields.Add(field);
-                            Console.WriteLine($"Debug: Added body field: Tag={tag}, Name={bodyFieldDef.Name}, Value={value}");
+                            fields.Add(ParseField(tag, value, bodyFieldDef));
                         }
                         else if (bodyChild is LoopDef loopDef)
                         {
                             if (pair.StartsWith($"{loopDef.Counter}="))
                             {
-                                if (int.TryParse(value, out int loopCount) && loopCount > 0)
+                                if (!int.TryParse(value, out int loopCount) || loopCount <= 0)
+                                    throw new InvalidDataException($"Invalid loop count value: '{value}' for counter {loopDef.Counter}");
+                                currentIndex++;
+                                for (int loopEntry = 0; loopEntry < loopCount && currentIndex < fieldPairs.Length; loopEntry++)
                                 {
-                                    currentIndex++;
-                                    for (int loopEntry = 0; loopEntry < loopCount && currentIndex < fieldPairs.Length; loopEntry++)
+                                    var currentLoop = new Loop(loopDef.Counter ?? "0", loopDef.Name, value);
+                                    bool loopStarted = false;
+                                    string firstLoopTag = loopDef.GetChildren().Keys.FirstOrDefault();
+                                    while (currentIndex < fieldPairs.Length && !loopStarted)
                                     {
-                                        var currentLoop = new Loop(loopDef.Counter, loopDef.Name, value ?? "0");
-                                        bool loopStarted = false;
-                                        string firstLoopTag = loopDef.GetChildren().Keys.FirstOrDefault();
-                                        while (currentIndex < fieldPairs.Length && !loopStarted)
+                                        if (firstLoopTag != null && fieldPairs[currentIndex].StartsWith($"{firstLoopTag}="))
                                         {
-                                            if (firstLoopTag != null && fieldPairs[currentIndex].StartsWith($"{firstLoopTag}="))
-                                            {
-                                                loopStarted = true;
-                                                break;
-                                            }
-                                            currentIndex++;
+                                            loopStarted = true;
+                                            break;
                                         }
-
-                                        if (!loopStarted) break;
-
-                                        while (currentIndex < fieldPairs.Length)
-                                        {
-                                            string loopPair = fieldPairs[currentIndex];
-                                            int loopEqualsIndex = loopPair.IndexOf('=');
-                                            if (loopEqualsIndex > 0)
-                                            {
-                                                string loopTag = loopPair.Substring(0, loopEqualsIndex);
-                                                string loopValue = loopPair.Substring(loopEqualsIndex + 1);
-
-                                                if (loopTag == "10") break;
-
-                                                if (loopDef.GetChildren().TryGetValue(loopTag, out FieldDef? loopFieldDef))
-                                                {
-                                                    var field = ParseField(loopTag, loopValue, loopFieldDef);
-                                                    currentLoop.AddParsedField(field);
-                                                    Console.WriteLine($"Debug: Added loop field: Tag={loopTag}, Name={loopFieldDef.Name}, Value={loopValue}");
-                                                }
-                                                else
-                                                {
-                                                    unparsedFields.Add(loopPair);
-                                                    Console.WriteLine($"Debug: Unparsed loop field: {loopPair}");
-                                                }
-                                            }
-                                            currentIndex++;
-                                        }
-
-                                        if (currentLoop.ParsedFields.Count > 0)
-                                        {
-                                            loops.Add(currentLoop);
-                                        }
+                                        currentIndex++;
                                     }
-                                    continue;
+                                    if (!loopStarted) break;
+                                    while (currentIndex < fieldPairs.Length)
+                                    {
+                                        string loopPair = fieldPairs[currentIndex];
+                                        int loopEqualsIndex = loopPair.IndexOf('=');
+                                        if (loopEqualsIndex <= 0) throw new InvalidDataException($"Invalid loop field pair format: '{loopPair}'");
+                                        string loopTag = loopPair.Substring(0, loopEqualsIndex);
+                                        string loopValue = loopPair.Substring(loopEqualsIndex + 1);
+                                        if (loopTag == "10") break;
+                                        if (loopDef.GetChildren().TryGetValue(loopTag, out FieldDef? loopFieldDef))
+                                        {
+                                            currentLoop.AddParsedField(ParseField(loopTag, loopValue, loopFieldDef));
+                                        }
+                                        else
+                                        {
+                                            unparsedFields.Add(loopPair);
+                                        }
+                                        currentIndex++;
+                                    }
+                                    if (currentLoop.ParsedFields.Count > 0) loops.Add(currentLoop);
                                 }
+                                continue;
                             }
                         }
                     }
                     else
                     {
                         unparsedFields.Add(pair);
-                        Console.WriteLine($"Debug: Unparsed field: {pair}");
                     }
+                    currentIndex++;
                 }
-                currentIndex++;
-            }
 
-            // Check for required fields
-            foreach (var child in _msgDef.GetChildren())
-            {
-                if (child.Value is FieldDef fieldDef && fieldDef.IsRequired)
+                foreach (var child in _msgDef.GetChildren())
                 {
-                    if (!fields.Exists(f => f.Tag == fieldDef.Tag.ToString()))
+                    if (child.Value is FieldDef fieldDef && fieldDef.IsRequired)
                     {
-                        errors.Add($"Missing required field: Tag {fieldDef.Tag} ({fieldDef.Name})");
+                        if (!fields.Exists(f => f.Tag == fieldDef.Tag.ToString()))
+                            throw new InvalidDataException($"Missing required field: Tag {fieldDef.Tag} ({fieldDef.Name})");
                     }
                 }
-            }
-            foreach (var child in headerDef.GetChildren())
-            {
-                if (child.Value is FieldDef fieldDef && fieldDef.IsRequired)
-                {
-                    if (!fields.Exists(f => f.Tag == fieldDef.Tag.ToString()))
-                    {
-                        errors.Add($"Missing required header field: Tag {fieldDef.Tag} ({fieldDef.Name})");
-                    }
-                }
-            }
 
-            string unparsedText = unparsedFields.Count > 0 ? string.Join(Specs.DelimiterChar.ToString(), unparsedFields) : string.Empty;
-            Console.WriteLine($"Debug: Total fields parsed: {fields.Count}, Unparsed fields: {unparsedFields.Count}");
-            return new ParseResult(errors, fields, loops, unparsedText, checkSumPassed, calculatedChecksum);
+                string unparsedText = unparsedFields.Count > 0 ? string.Join(Specs.DelimiterChar.ToString(), unparsedFields) : string.Empty;
+                return new ParseResult(errors, fields, loops, unparsedText, checkSumPassed, calculatedChecksum);
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException("Error parsing message. All data should be clean at this stage.", ex);
+            }
+        }
+
+        private void _AssignFields()
+        {
+            try
+            {
+                foreach (var field in Fields)
+                {
+                    if (field.Tag == "34") // Assuming Tag 34 is for MsgSeqNum
+                    {
+                        MsgSeqNumField = field;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to assign fields.", ex);
+            }
+        }
+
+        private int _CalculateCheckSum(string raw)
+        {
+            try
+            {
+                int checksum = 0;
+                foreach (byte b in Encoding.ASCII.GetBytes(raw))
+                {
+                    checksum += b;
+                }
+                return checksum % 256;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Failed to calculate checksum.", ex);
+            }
         }
 
         private MessageField ParseField(string tag, string value, FieldDef fieldDef)
         {
-            string? dateFormat = fieldDef.Type == FieldType.Date ? fieldDef.DateFormat : null;
-            object? parsedValue = ParseFieldValue(value, fieldDef.Type, dateFormat, fieldDef.TimeZoneEffected);
-            return new MessageField
+            try
             {
-                Tag = tag,
-                Name = fieldDef.Name,
-                Value = value,
-                Type = fieldDef.Type.ToString(),
-                DataField = fieldDef.DataField,
-                ParsedValue = parsedValue ?? string.Empty
-            };
+                object? parsedValue = ParseFieldValue(value, fieldDef.Type, fieldDef.DateFormat, fieldDef.TimeZoneEffected, fieldDef.DefaultValue);
+                return new MessageField
+                {
+                    Tag = tag,
+                    Name = fieldDef.Name,
+                    Value = value ?? fieldDef.DefaultValue,
+                    Type = fieldDef.Type.ToString(),
+                    DataField = fieldDef.DataField,
+                    ParsedValue = parsedValue ?? string.Empty
+                };
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException($"Failed to parse field {tag} ({fieldDef.Name}).", ex);
+            }
         }
 
-        private object? ParseFieldValue(string value, FieldType type, string? dateFormat, bool timeZoneEffected)
+        private object? ParseFieldValue(string value, FieldType type, string dateFormat, bool timeZoneEffected, string defaultValue)
         {
-            if (string.IsNullOrEmpty(value)) return string.Empty;
-            switch (type)
+            try
             {
-                case FieldType.Int: return int.TryParse(value, out int i) ? (object)i : string.Empty;
-                case FieldType.Double: return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? (object)d : string.Empty;
-                case FieldType.Date:
-                    try
-                    {
+                value = value ?? defaultValue;
+                if (string.IsNullOrEmpty(value)) return string.Empty;
+                switch (type)
+                {
+                    case FieldType.Int: return int.TryParse(value, out int i) ? (object)i : throw new InvalidDataException($"Invalid integer value: '{value}'");
+                    case FieldType.Double: return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? (object)d : throw new InvalidDataException($"Invalid double value: '{value}'");
+                    case FieldType.Date:
                         if (!string.IsNullOrEmpty(dateFormat))
                         {
                             DateTime dt = DateTime.ParseExact(value, dateFormat, CultureInfo.InvariantCulture);
-                            if (timeZoneEffected) dt = dt.AddHours(7);
+                            if (timeZoneEffected) dt = dt.AddHours(7); // Using TimeZone property if needed
                             return dt;
                         }
                         else if (DateTime.TryParse(value, out DateTime dtDefault))
@@ -282,24 +362,22 @@ namespace MarketDataPlugin
                             if (timeZoneEffected) dtDefault = dtDefault.AddHours(7);
                             return dtDefault;
                         }
-                    }
-                    catch (FormatException)
-                    {
-                        return string.Empty;
-                    }
-                    return string.Empty;
-                default: return value;
+                        throw new InvalidDataException($"Invalid date value: '{value}'");
+                    default: return value;
+                }
+            }
+            catch (FormatException ex)
+            {
+                throw new InvalidDataException("Failed to parse field value due to format error.", ex);
             }
         }
 
-        private int CalculateCheckSum(byte[] messageBytes)
-        {
-            int checksum = 0;
-            foreach (byte b in messageBytes)
-            {
-                checksum += b;
-            }
-            return checksum % 256;
-        }
+        public int CheckSum => CheckSumField?.Value != null && int.TryParse(CheckSumField.Value.ToString(), out int cs) ? cs : throw new InvalidDataException("CheckSum value is invalid or missing.");
+    }
+
+    public class InvalidDataException : Exception
+    {
+        public InvalidDataException(string message) : base(message) { }
+        public InvalidDataException(string message, Exception inner) : base(message, inner) { }
     }
 }

@@ -1,4 +1,4 @@
-namespace MarketDataPlugin
+﻿namespace MarketDataPlugin.DEF
 {
     public abstract class MsgChildDef : FixItem
     {

@@ -1,9 +1,11 @@
+﻿using MarketDataPlugin.DEF;
+
 namespace MarketDataPlugin
-{
+{//chor thangwr vao FieldDef.cs minh chi lam ve mot chieu thoi code thay gui se co hai chieu
     public class Field : MsgChildDef
     {
         public FieldType Type { get; }
-        public bool Required { get; }
+        public bool Required { get; }//no need
         public string Value { get; set; }
 
         public Field(string tag, string name, FieldType type, bool required) : base(tag, name)

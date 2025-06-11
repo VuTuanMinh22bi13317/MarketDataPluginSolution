@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 
 namespace MarketDataPlugin.DEF
 {
@@ -11,6 +12,7 @@ namespace MarketDataPlugin.DEF
         public string Name { get; } // Message name
         public string MsgType { get; } // Message type (e.g., MV)
         public DataDirection Direction { get; } // Direction of the message (In/Out)
+        public FieldDef? CheckSum { get; set; } // Made nullable to resolve CS8618
 
         // Creates a new MsgDef with name, type, and direction, checks for null values
         public MsgDef(string name, string msgType, DataDirection direction)
@@ -27,11 +29,11 @@ namespace MarketDataPlugin.DEF
             children[tag] = child;
         }
 
+        // Returns a read-only view of all child fields and loops as MsgChildDef
+        public IReadOnlyList<MsgChildDef> Children => new List<MsgChildDef>(children.Values.OfType<MsgChildDef>());
+
         // Returns a read-only view of all child fields and loops
-        public IReadOnlyDictionary<string, object> GetChildren()
-        {
-            return children.AsReadOnly();
-        }
+        public IReadOnlyDictionary<string, object> GetChildren() => new ReadOnlyDictionary<string, object>(children);
     }
 
     // Splits raw FIX data into individual messages
@@ -66,7 +68,7 @@ namespace MarketDataPlugin.DEF
                 }
 
                 // Find the end of tag 9 to determine the start of the body
-                int bodyStart = rawData.IndexOf(delimiterChar, beginIndex + $"8={expectedBeginString}{delimiterChar}".Length) + 1; // Vị trí sau tag 9
+                int bodyStart = rawData.IndexOf(delimiterChar, beginIndex + $"8={expectedBeginString}{delimiterChar}".Length) + 1; // Position after tag 9
                 if (bodyStart < 0 || bodyStart >= rawData.Length)
                 {
                     Console.WriteLine($"Debug: Invalid body start at index {beginIndex}, skipping.");
@@ -94,8 +96,8 @@ namespace MarketDataPlugin.DEF
 
                 int checksumEnd = rawData.IndexOf(delimiterChar, checksumStart + 4);
                 if (checksumEnd < 0) checksumEnd = rawData.Length;
-                int expectedEnd = checksumEnd + 1; // Bao gồm delimiter cuối cùng
-                int totalLength = expectedEnd - beginIndex; // Độ dài toàn bộ message
+                int expectedEnd = checksumEnd + 1; // Include the final delimiter
+                int totalLength = expectedEnd - beginIndex; // Total length of the message
 
                 string message = rawData.Substring(beginIndex, expectedEnd - beginIndex); // Extract the message
                 messages.Add((message, totalLength));

@@ -1,31 +1,29 @@
 ﻿using System.Collections.Generic;
-using MarketDataPlugin.DEF;
 
 namespace MarketDataPlugin
 {
     public class Loop
     {
-        public string Tag { get; }
+        public string Counter { get; }
         public string Name { get; }
-        public string Counter { get; set; }
-        public Dictionary<string, FieldDef> Children { get; } = new Dictionary<string, FieldDef>(); // Definitions
-        public List<MessageField> ParsedFields { get; } = new List<MessageField>(); // Parsed fields for this loop entry
+        public List<MessageField> ParsedFields { get; } = new List<MessageField>();
 
-        public Loop(string tag, string name, string counter)
+        public Loop(string counter, string name, string count)
         {
-            Tag = tag;
-            Name = name;
             Counter = counter;
+            Name = name;
         }
 
-        public void AddChild(string key, FieldDef child)
+        public Loop(string counter, string name, List<TVP> pairs, int startIdx)
         {
-            if (!Children.ContainsKey(key)) Children.Add(key, child);
+            Counter = counter;
+            Name = name;
+            for (int i = startIdx; i < pairs.Count && pairs[i].Tag != "10"; i++)
+            {
+                ParsedFields.Add(new MessageField { Tag = pairs[i].Tag, Value = pairs[i].Value });
+            }
         }
 
-        public void AddParsedField(MessageField field)
-        {
-            if (field != null) ParsedFields.Add(field);
-        }
+        public void AddParsedField(MessageField field) => ParsedFields.Add(field);
     }
 }

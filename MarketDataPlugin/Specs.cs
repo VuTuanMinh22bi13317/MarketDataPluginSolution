@@ -18,7 +18,7 @@ namespace MarketDataPlugin
         public static string BeginString { get; set; } = _beginString;
         public static char DelimiterChar { get; set; } = _delimiterChar;
         public static bool InMsgChecksum { get; set; } = _inMsgChecksum;
-        public static Dictionary<string, MsgDef>? MsgDefs { get; set; }
+        public static Dictionary<string, MsgDef>? MsgDefs { get => _msgDefs; set => _msgDefs = value; }
         #endregion
 
         #region Configuration Loading
@@ -46,7 +46,17 @@ namespace MarketDataPlugin
             XmlNode? headerNode = doc.SelectSingleNode("/Specs/Header");
             if (headerNode != null)
             {
-                var headerDef = new MsgDef("Header", "Header", DataDirection.InOut);
+                var headerDef = new MsgDef("Header", "Header", DataDirection.InOut)
+                {
+                    CheckSum = new FieldDef("10", "CheckSum")
+                    {
+                        Type = FieldType.Int,
+                        IsRequired = true,
+                        Tag = 10,
+                        TimeZoneEffected = true,
+                        Direction = DataDirection.InOut
+                    }
+                };
 
                 var headerFields = headerNode.SelectNodes("Field");
                 if (headerFields != null)
@@ -56,39 +66,27 @@ namespace MarketDataPlugin
                         string? tagStr = fieldNode.Attributes?["Tag"]?.Value;
                         if (!string.IsNullOrEmpty(tagStr) && int.TryParse(tagStr, out int tag))
                         {
-                            string? fieldName = fieldNode.Attributes?["Name"]?.Value;
-                            if (!string.IsNullOrWhiteSpace(fieldName))
-                            {
-                                string? typeStr = fieldNode.Attributes?["Type"]?.Value?.Trim();
-                                FieldType type = Enum.TryParse(typeStr ?? "String", true, out FieldType parsedType) ? parsedType : FieldType.String;
-                                string? dataField = fieldNode.Attributes?["DataField"]?.Value ?? string.Empty;
-                                bool isRequired = bool.TryParse(fieldNode.Attributes?["IsRequired"]?.Value, out bool required) && required;
-                                bool timeZoneEffected = bool.TryParse(fieldNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
-                                string? dateFormat = type == FieldType.Date ? fieldNode.Attributes?["DateFormat"]?.Value : null;
+                            string? fieldName = fieldNode.Attributes?["Name"]?.Value ?? "Unknown";
+                            string? typeStr = fieldNode.Attributes?["Type"]?.Value?.Trim() ?? "String";
+                            FieldType type = Enum.TryParse(typeStr, true, out FieldType parsedType) ? parsedType : FieldType.String;
+                            string? dataField = fieldNode.Attributes?["DataField"]?.Value ?? string.Empty;
+                            bool isRequired = bool.TryParse(fieldNode.Attributes?["IsRequired"]?.Value, out bool required) && required;
+                            bool timeZoneEffected = bool.TryParse(fieldNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
+                            string? dateFormat = type == FieldType.Date ? fieldNode.Attributes?["DateFormat"]?.Value : string.Empty;
 
-                                var fieldDef = new FieldDef(tagStr, fieldName)
-                                {
-                                    Type = type,
-                                    DataField = dataField,
-                                    TimeZoneEffected = timeZoneEffected,
-                                    DateFormat = dateFormat,
-                                    Direction = DataDirection.InOut,
-                                    IsRequired = isRequired,
-                                    Tag = tag
-                                };
-                                headerDef.AddChild(tagStr, fieldDef);
-                            }
+                            var fieldDef = new FieldDef(tagStr, fieldName)
+                            {
+                                Type = type,
+                                DataField = dataField,
+                                TimeZoneEffected = timeZoneEffected,
+                                DateFormat = dateFormat,
+                                Direction = DataDirection.InOut,
+                                IsRequired = isRequired,
+                                Tag = tag
+                            };
+                            headerDef.AddChild(tagStr, fieldDef);
                         }
                     }
-                    // Đảm bảo thêm CheckSum (Tag 10) vào Header
-                    var fieldDef10 = new FieldDef("10", "CheckSum")
-                    {
-                        Type = FieldType.Int,
-                        Direction = DataDirection.InOut,
-                        IsRequired = true,
-                        Tag = 10
-                    };
-                    headerDef.AddChild("10", fieldDef10);
                 }
                 msgDefs["Header"] = headerDef;
             }
@@ -104,12 +102,20 @@ namespace MarketDataPlugin
             {
                 string? msgType = node.Attributes?["MsgType"]?.Value;
                 if (string.IsNullOrEmpty(msgType)) throw new ArgumentException($"Missing MsgType attribute in Msg node");
-                string? name = node.Attributes?["Name"]?.Value;
-                if (string.IsNullOrWhiteSpace(name))
-                    throw new ArgumentException($"Name attribute cannot be empty in Msg node with MsgType '{msgType}'");
+                string? name = node.Attributes?["Name"]?.Value ?? "Unknown";
                 if (Enum.TryParse<DataDirection>(node.Attributes?["Direction"]?.Value ?? "InOut", out var direction))
                 {
-                    var msgDef = new MsgDef(name, msgType, direction);
+                    var msgDef = new MsgDef(name, msgType, direction)
+                    {
+                        CheckSum = new FieldDef("10", "CheckSum")
+                        {
+                            Type = FieldType.Int,
+                            IsRequired = true,
+                            Tag = 10,
+                            TimeZoneEffected = true,
+                            Direction = DataDirection.InOut
+                        }
+                    };
 
                     var childNodes = node.SelectNodes("Field | Loop");
                     if (childNodes != null)
@@ -121,37 +127,33 @@ namespace MarketDataPlugin
                                 string? tagStr = childNode.Attributes?["Tag"]?.Value;
                                 if (!string.IsNullOrEmpty(tagStr) && int.TryParse(tagStr, out int tag))
                                 {
-                                    string? fieldName = childNode.Attributes?["Name"]?.Value;
-                                    if (!string.IsNullOrWhiteSpace(fieldName))
-                                    {
-                                        string? typeStr = childNode.Attributes?["Type"]?.Value?.Trim();
-                                        FieldType type = Enum.TryParse(typeStr ?? "String", true, out FieldType parsedType) ? parsedType : FieldType.String;
-                                        string? dataField = childNode.Attributes?["DataField"]?.Value ?? string.Empty;
-                                        bool isRequired = bool.TryParse(childNode.Attributes?["IsRequired"]?.Value, out bool required) && required;
-                                        bool timeZoneEffected = bool.TryParse(childNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
-                                        string? dateFormat = type == FieldType.Date ? childNode.Attributes?["DateFormat"]?.Value : null;
+                                    string? fieldName = childNode.Attributes?["Name"]?.Value ?? "Unknown";
+                                    string? typeStr = childNode.Attributes?["Type"]?.Value?.Trim() ?? "String";
+                                    FieldType type = Enum.TryParse(typeStr, true, out FieldType parsedType) ? parsedType : FieldType.String;
+                                    string? dataField = childNode.Attributes?["DataField"]?.Value ?? string.Empty;
+                                    bool isRequired = bool.TryParse(childNode.Attributes?["IsRequired"]?.Value, out bool required) && required;
+                                    bool timeZoneEffected = bool.TryParse(childNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
+                                    string? dateFormat = type == FieldType.Date ? childNode.Attributes?["DateFormat"]?.Value : string.Empty;
 
-                                        var fieldDef = new FieldDef(tagStr, fieldName)
-                                        {
-                                            Type = type,
-                                            DataField = dataField,
-                                            TimeZoneEffected = timeZoneEffected,
-                                            DateFormat = dateFormat,
-                                            Direction = direction,
-                                            IsRequired = isRequired,
-                                            Tag = tag
-                                        };
-                                        msgDef.AddChild(tagStr, fieldDef);
-                                    }
+                                    var fieldDef = new FieldDef(tagStr, fieldName)
+                                    {
+                                        Type = type,
+                                        DataField = dataField,
+                                        TimeZoneEffected = timeZoneEffected,
+                                        DateFormat = dateFormat,
+                                        Direction = direction,
+                                        IsRequired = isRequired,
+                                        Tag = tag
+                                    };
+                                    msgDef.AddChild(tagStr, fieldDef);
                                 }
                             }
                             else if (childNode.Name == "Loop")
                             {
                                 string? counterName = childNode.Attributes?["Counter"]?.Value ?? string.Empty;
-                                string counterTag = counterName;
                                 string? loopName = childNode.Attributes?["Name"]?.Value ?? "Unknown";
                                 var children = new Dictionary<string, FieldDef>();
-                                var loopDef = new LoopDef(counterTag, loopName, children);
+                                var loopDef = new LoopDef(counterName, loopName, children);
 
                                 var loopChildNodes = childNode.SelectNodes("Field");
                                 if (loopChildNodes != null)
@@ -161,32 +163,29 @@ namespace MarketDataPlugin
                                         string? loopTagStr = loopChildNode.Attributes?["Tag"]?.Value;
                                         if (!string.IsNullOrEmpty(loopTagStr) && int.TryParse(loopTagStr, out int loopTag))
                                         {
-                                            string? loopFieldName = loopChildNode.Attributes?["Name"]?.Value;
-                                            if (!string.IsNullOrWhiteSpace(loopFieldName))
-                                            {
-                                                string? loopTypeStr = loopChildNode.Attributes?["Type"]?.Value?.Trim();
-                                                FieldType loopType = Enum.TryParse(loopTypeStr ?? "String", true, out FieldType parsedType) ? parsedType : FieldType.String;
-                                                string? loopDataField = loopChildNode.Attributes?["DataField"]?.Value ?? string.Empty;
-                                                bool loopIsRequired = bool.TryParse(loopChildNode.Attributes?["IsRequired"]?.Value, out bool required) && required;
-                                                bool loopTimeZoneEffected = bool.TryParse(loopChildNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
-                                                string? loopDateFormat = loopType == FieldType.Date ? loopChildNode.Attributes?["DateFormat"]?.Value : null;
+                                            string? loopFieldName = loopChildNode.Attributes?["Name"]?.Value ?? "Unknown";
+                                            string? loopTypeStr = loopChildNode.Attributes?["Type"]?.Value?.Trim() ?? "String";
+                                            FieldType loopType = Enum.TryParse(loopTypeStr, true, out FieldType parsedType) ? parsedType : FieldType.String;
+                                            string? loopDataField = loopChildNode.Attributes?["DataField"]?.Value ?? string.Empty;
+                                            bool loopIsRequired = bool.TryParse(loopChildNode.Attributes?["IsRequired"]?.Value, out bool required) && required;
+                                            bool loopTimeZoneEffected = bool.TryParse(loopChildNode.Attributes?["TimeZoneEffected"]?.Value, out bool tze) && tze;
+                                            string? loopDateFormat = loopType == FieldType.Date ? loopChildNode.Attributes?["DateFormat"]?.Value : string.Empty;
 
-                                                var loopFieldDef = new FieldDef(loopTagStr, loopFieldName)
-                                                {
-                                                    Type = loopType,
-                                                    DataField = loopDataField,
-                                                    TimeZoneEffected = loopTimeZoneEffected,
-                                                    DateFormat = loopDateFormat,
-                                                    Direction = direction,
-                                                    IsRequired = loopIsRequired,
-                                                    Tag = loopTag
-                                                };
-                                                loopDef.AddChild(loopTagStr, loopFieldDef);
-                                            }
+                                            var loopFieldDef = new FieldDef(loopTagStr, loopFieldName)
+                                            {
+                                                Type = loopType,
+                                                DataField = loopDataField,
+                                                TimeZoneEffected = loopTimeZoneEffected,
+                                                DateFormat = loopDateFormat,
+                                                Direction = direction,
+                                                IsRequired = loopIsRequired,
+                                                Tag = loopTag
+                                            };
+                                            loopDef.AddChild(loopTagStr, loopFieldDef);
                                         }
                                     }
                                 }
-                                msgDef.AddChild(counterTag, loopDef);
+                                msgDef.AddChild(counterName, loopDef);
                             }
                         }
                     }
@@ -218,15 +217,10 @@ namespace MarketDataPlugin
                 {
                     if (child.Value is FieldDef fieldDef)
                     {
-                        string fieldInfo = $"    Tag: {fieldDef.Tag}, Name: {fieldDef.Name}, Type: {fieldDef.Type}";
-                        if (!string.IsNullOrEmpty(fieldDef.DataField))
-                        {
-                            fieldInfo += $", DataField: {fieldDef.DataField}";
-                        }
-                        if (fieldDef.Type == FieldType.Date && fieldDef.DateFormat != null)
-                        {
+                        string fieldInfo = $"    Tag: {fieldDef.Tag}, Name: {fieldDef.Name}, Type: {fieldDef.Type}, IsRequired: {fieldDef.IsRequired}";
+                        if (!string.IsNullOrEmpty(fieldDef.DataField)) fieldInfo += $", DataField: {fieldDef.DataField}";
+                        if (fieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(fieldDef.DateFormat))
                             fieldInfo += $", DateFormat: {fieldDef.DateFormat}, TimeZoneEffected: {fieldDef.TimeZoneEffected}";
-                        }
                         Console.WriteLine(fieldInfo);
                     }
                     else if (child.Value is LoopDef loopDef)
@@ -235,15 +229,11 @@ namespace MarketDataPlugin
                         foreach (var loopChild in loopDef.GetChildren())
                         {
                             var loopFieldDef = loopChild.Value;
-                            string loopFieldInfo = $"      Tag: {loopFieldDef.Tag}, Name: {loopFieldDef.Name}, Type: {loopFieldDef.Type}";
+                            string loopFieldInfo = $"      Tag: {loopFieldDef.Tag}, Name: {loopFieldDef.Name}, Type: {loopFieldDef.Type}, IsRequired: {loopFieldDef.IsRequired}";
                             if (!string.IsNullOrEmpty(loopFieldDef.DataField))
-                            {
                                 loopFieldInfo += $", DataField: {loopFieldDef.DataField}";
-                            }
-                            if (loopFieldDef.Type == FieldType.Date && loopFieldDef.DateFormat != null)
-                            {
+                            if (loopFieldDef.Type == FieldType.Date && !string.IsNullOrEmpty(loopFieldDef.DateFormat))
                                 loopFieldInfo += $", DateFormat: {loopFieldDef.DateFormat}, TimeZoneEffected: {loopFieldDef.TimeZoneEffected}";
-                            }
                             Console.WriteLine(loopFieldInfo);
                         }
                     }
@@ -309,7 +299,7 @@ namespace MarketDataPlugin
                     string? msgType = ExtractMsgType(message);
                     if (msgType != null && MsgDefs.TryGetValue(msgType, out MsgDef? msgDef))
                     {
-                        var msg = new Msg(msgDef, MsgDefs);
+                        var msg = new Msg(msgDef, message);
                         var parseResult = msg.Parse(message, messageErrors);
 
                         if (parseResult == null)
