@@ -12,12 +12,12 @@ namespace MarketDataPlugin
         #region Configuration Properties
         private static string _beginString = "FIX.4.4";
         private static char _delimiterChar = '\x01';
-        private static bool _inMsgChecksum = true;
+        private static bool _inMsgChecksum = true; // Default, can be overridden by config
         private static Dictionary<string, MsgDef>? _msgDefs;
 
         public static string BeginString { get; set; } = _beginString;
         public static char DelimiterChar { get; set; } = _delimiterChar;
-        public static bool InMsgChecksum { get; set; } = _inMsgChecksum;
+        public static bool InMsgChecksum { get; set; } = _inMsgChecksum; // Make configurable
         public static Dictionary<string, MsgDef>? MsgDefs { get => _msgDefs; set => _msgDefs = value; }
         #endregion
 
@@ -36,6 +36,14 @@ namespace MarketDataPlugin
             try
             {
                 doc.Load(configPath);
+                // Check for InMsgChecksum setting in config (optional)
+                XmlNode? specsNode = doc.SelectSingleNode("/Specs");
+                if (specsNode != null)
+                {
+                    string? checksumAttr = specsNode.Attributes?["InMsgChecksum"]?.Value;
+                    if (!string.IsNullOrEmpty(checksumAttr) && bool.TryParse(checksumAttr, out bool checksumValue))
+                        InMsgChecksum = checksumValue;
+                }
             }
             catch (Exception ex)
             {
@@ -51,7 +59,7 @@ namespace MarketDataPlugin
                     CheckSum = new FieldDef("10", "CheckSum")
                     {
                         Type = FieldType.Int,
-                        IsRequired = true,
+                        IsRequired = Specs.InMsgChecksum, // Make IsRequired match InMsgChecksum
                         Tag = 10,
                         TimeZoneEffected = true,
                         Direction = DataDirection.InOut
@@ -110,7 +118,7 @@ namespace MarketDataPlugin
                         CheckSum = new FieldDef("10", "CheckSum")
                         {
                             Type = FieldType.Int,
-                            IsRequired = true,
+                            IsRequired = Specs.InMsgChecksum, // Make IsRequired match InMsgChecksum
                             Tag = 10,
                             TimeZoneEffected = true,
                             Direction = DataDirection.InOut
