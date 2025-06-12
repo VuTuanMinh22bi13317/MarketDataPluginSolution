@@ -93,35 +93,6 @@ namespace MarketDataPlugin
 
         public object? Value => _value;
 
-        public string StringValue
-        {
-            get
-            {
-                if (string.IsNullOrEmpty(_stringValue) && _value != null)
-                {
-                    switch (_def.Type)
-                    {
-                        case FieldType.Int:
-                            _stringValue = _value.ToString();
-                            break;
-                        case FieldType.Double:
-                            _stringValue = ((double)_value).ToString(CultureInfo.InvariantCulture);
-                            break;
-                        case FieldType.Date:
-                            DateTime d = (DateTime)_value;
-                            if (_def.TimeZoneEffected)
-                                d = ((DateTime)_value).AddHours(-_def.TimeZone);
-                            _stringValue = d.ToString(_def.DateFormat ?? "yyyyMMdd");
-                            break;
-                        default:
-                            _stringValue = _value.ToString() ?? string.Empty;
-                            break;
-                    }
-                }
-                return _stringValue;
-            }
-        }
-
         // Implement the abstract Parse method from FixItem
         public override void Parse(string fixMessage)
         {

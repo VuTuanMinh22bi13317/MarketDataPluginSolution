@@ -18,7 +18,7 @@ namespace MarketDataPlugin
         public Field? MsgSeqNumField { get; set; }
         public string UnparsedText { get; set; } = string.Empty;
         public bool CheckSumPassed { get; set; } = true;
-        public long MsgSeqNum => MsgSeqNumField?.StringValue != null && long.TryParse(MsgSeqNumField.StringValue, out long seq) ? seq : 0;
+        public long MsgSeqNum => MsgSeqNumField != null && MsgSeqNumField.Value is long seq ? seq : 0;
         public List<string> ParseErrors { get; } = new List<string>(); // List of exceptions/errors
 
         private const char DELIMITER_CHAR = '\x01';
@@ -200,9 +200,12 @@ namespace MarketDataPlugin
                 _AssignFields();
                 if (Specs.InMsgChecksum && CheckSumField != null)
                 {
-                    int trailerIdx = Raw.IndexOf("10=");
-                    string checksumRaw = trailerIdx > 0 ? Raw.Substring(0, trailerIdx) : Raw;
-                    CheckSumPassed = CheckSum == _CalculateCheckSum(checksumRaw);
+                    if (CheckSumField.Value is int cs)
+                    {
+                        int trailerIdx = Raw.IndexOf("10=");
+                        string checksumRaw = trailerIdx > 0 ? Raw.Substring(0, trailerIdx) : Raw;
+                        CheckSumPassed = cs == _CalculateCheckSum(checksumRaw);
+                    }
                 }
             }
             catch (Exception ex)
@@ -348,7 +351,7 @@ namespace MarketDataPlugin
             }
         }
 
-        public int CheckSum => CheckSumField?.StringValue != null && int.TryParse(CheckSumField.StringValue, out int cs) ? cs : throw new InvalidDataException("Debug: CheckSum value is invalid or missing.");
+        public int CheckSum => CheckSumField != null && CheckSumField.Value is int cs ? cs : throw new InvalidDataException("Debug: CheckSum value is invalid or missing.");
     }
 
     public class InvalidDataException : Exception
