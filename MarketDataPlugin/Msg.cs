@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using System.Globalization;
 using MarketDataPlugin.DEF;
 
 namespace MarketDataPlugin
@@ -295,59 +294,6 @@ namespace MarketDataPlugin
             catch (Exception ex)
             {
                 throw new InvalidOperationException("Debug: Failed to calculate checksum.", ex);
-            }
-        }
-
-        private MessageField ParseField(string tag, string value, FieldDef fieldDef)
-        {
-            try
-            {
-                object? parsedValue = ParseFieldValue(value, fieldDef.Type, fieldDef.DateFormat, fieldDef.TimeZoneEffected, fieldDef.DefaultValue);
-                return new MessageField
-                {
-                    Tag = tag,
-                    Name = fieldDef.Name,
-                    Value = value ?? fieldDef.DefaultValue,
-                    Type = fieldDef.Type.ToString(),
-                    DataField = fieldDef.DataField,
-                    ParsedValue = parsedValue ?? string.Empty
-                };
-            }
-            catch (Exception ex)
-            {
-                throw new InvalidDataException($"Debug: Failed to parse field {tag} ({fieldDef.Name}).", ex);
-            }
-        }
-
-        private object? ParseFieldValue(string value, FieldType type, string dateFormat, bool timeZoneEffected, string defaultValue)
-        {
-            try
-            {
-                value = value ?? defaultValue;
-                if (string.IsNullOrEmpty(value)) return string.Empty;
-                switch (type)
-                {
-                    case FieldType.Int: return int.TryParse(value, out int i) ? (object)i : throw new InvalidDataException($"Debug: Invalid integer value: '{value}'");
-                    case FieldType.Double: return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double d) ? (object)d : throw new InvalidDataException($"Debug: Invalid double value: '{value}'");
-                    case FieldType.Date:
-                        if (!string.IsNullOrEmpty(dateFormat))
-                        {
-                            DateTime dt = DateTime.ParseExact(value, dateFormat, CultureInfo.InvariantCulture);
-                            if (timeZoneEffected) dt = dt.AddHours(7);
-                            return dt;
-                        }
-                        else if (DateTime.TryParse(value, out DateTime dtDefault))
-                        {
-                            if (timeZoneEffected) dtDefault = dtDefault.AddHours(7);
-                            return dtDefault;
-                        }
-                        throw new InvalidDataException($"Debug: Invalid date value: '{value}'");
-                    default: return value;
-                }
-            }
-            catch (FormatException ex)
-            {
-                throw new InvalidDataException("Debug: Failed to parse field value due to format error.", ex);
             }
         }
 
