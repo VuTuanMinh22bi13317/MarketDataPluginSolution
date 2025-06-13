@@ -148,7 +148,7 @@ namespace MarketDataPlugin
                         TVP? tvp = null;
                         for (int i = 0; i < pairs.Count; i++)
                         {
-                            if (pairs[i].Tag == fieldDef.Tag.ToString())
+                            if (pairs[i].Tag == fieldDef.Tag.ToString()) 
                             {
                                 tvp = pairs[i];
                                 pairs.RemoveAt(i);
