@@ -15,6 +15,9 @@ namespace MddsSocketTest
     public partial class Form1 : Form
     {
         private bool _StopLoad = false;
+        private bool _isReceiving = false; // Biến kiểm soát nhận dữ liệu
+        private UdpClient _receiveClient; // Socket để nhận dữ liệu
+        private readonly string _logFilePath = @"C:\Users\Admin\MarketDataPluginSolution\MddsSocketTest\logs\receiver_log.txt";
 
         public Form1()
         {
@@ -30,7 +33,7 @@ namespace MddsSocketTest
                 }
                 else
                 {
-                    Console.WriteLine("Debug: Config file not found.");
+                    Console.WriteLine("Debug: Config file not found at " + configPath);
                 }
             }
             catch (Exception ex)
@@ -55,7 +58,6 @@ namespace MddsSocketTest
 
             var lastSentTime = DateTime.Now;
             var seq = 0;
-            // Cập nhật đường dẫn
             using (StreamReader reader = new StreamReader(path))
             {
                 string line;
@@ -69,7 +71,6 @@ namespace MddsSocketTest
                     }
                     if (!string.IsNullOrEmpty(line))
                     {
-                        // Tải cấu hình lại trong phương thức (nếu cần)
                         Specs.LoadConfig(@"C:\Users\Admin\MarketDataPluginSolution\MddsSocketTest\config\config-test.xml");
                         if (Specs.MsgDefs != null && Specs.MsgDefs.Count > 0)
                         {
@@ -86,7 +87,7 @@ namespace MddsSocketTest
                                     try
                                     {
                                         socket.Send(buff, buff.Length);
-                                        Console.WriteLine($"Debug: Data sent successfully on {id}:{port}, Seq: {seq}");
+                                        Console.WriteLine($"Debug: Data sent successfully on {id}:{port}, Seq: {seq}, Data: {msg.Raw}");
                                     }
                                     catch (SocketException ex)
                                     {
@@ -118,7 +119,7 @@ namespace MddsSocketTest
                     }
                     if (seq % 50 == 0)
                     {
-                        await Task.Delay(50); // Comment vì không thấy delay trong yêu cầu
+                        await Task.Delay(50); // Giữ nguyên để bảo vệ máy của bạn
                     }
                 }
             }
@@ -134,7 +135,7 @@ namespace MddsSocketTest
             Console.WriteLine($"Debug: btnStartSending_Click triggered at {DateTime.Now}");
             _StopLoad = false;
             string rp = @"C:\Users\Admin\Downloads\raw_mdds\hsx\";
-            //string rp = @"C:\Users\Admin\MarketDataPluginSolution\MddsSocketTest\raw_mdds\hnx\";
+            //string rp = @"C:\Users\Admin\Downloads\raw_mdds\hnx\";
 
             XDocument doc = XDocument.Load(@"C:\Users\Admin\MarketDataPluginSolution\MddsSocketTest\config\config-test.xml");
             var groups = doc.Descendants("Group");
@@ -143,7 +144,6 @@ namespace MddsSocketTest
                 var receivers = group.Elements("Receiver");
                 foreach (var receiver in receivers)
                 {
-                   
                     string mcGroup = (string)receiver.Attribute("MulticastGroup");
                     string port = (string)receiver.Attribute("Port");
                     string dataPath = rp + (string)receiver.Attribute("DataKey") + ".raw";
@@ -152,7 +152,7 @@ namespace MddsSocketTest
                     }
                     if (string.IsNullOrEmpty(mcGroup) || !File.Exists(dataPath))
                         continue;
-                    //
+                    Console.WriteLine($"Debug: Starting sending to {mcGroup}:{port} from {dataPath}");
                     _ = Task.Run(async () =>
                     {
                         await _DoSending(mcGroup, port, dataPath);
@@ -161,11 +161,100 @@ namespace MddsSocketTest
             }
         }
 
+        private async void btnStartReceiving_Click(object sender, EventArgs e)
+        {
+            if (_isReceiving) return;
+
+            _isReceiving = true;
+            // Lấy địa chỉ và cổng từ config-test.xml (giả sử dùng receiver đầu tiên)
+            XDocument doc;
+            try
+            {
+                doc = XDocument.Load(@"C:\Users\Admin\MarketDataPluginSolution\MddsSocketTest\config\config-test.xml");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Debug: Error loading config for receiving: {ex.Message}");
+                return;
+            }
+            var receiver = doc.Descendants("Receiver").FirstOrDefault();
+            if (receiver == null)
+            {
+                Console.WriteLine("Debug: No receiver configuration found.");
+                return;
+            }
+
+            string multicastAddress = (string)receiver.Attribute("MulticastGroup");
+            int port;
+            try
+            {
+                port = int.Parse((string)receiver.Attribute("Port"));
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Debug: Invalid port in config: {ex.Message}");
+                return;
+            }
+
+            try
+            {
+                _receiveClient = new UdpClient(port);
+                _receiveClient.JoinMulticastGroup(IPAddress.Parse(multicastAddress));
+                Console.WriteLine($"Debug: Started receiving on {multicastAddress}:{port}");
+
+                while (_isReceiving)
+                {
+                    var result = await _receiveClient.ReceiveAsync();
+                    string data = Encoding.ASCII.GetString(result.Buffer);
+                    UpdateLog(data);
+
+                    if (txtReceived.InvokeRequired)
+                    {
+                        txtReceived.Invoke(new Action(() => txtReceived.AppendText(data + Environment.NewLine)));
+                    }
+                    else
+                    {
+                        txtReceived.AppendText(data + Environment.NewLine);
+                    }
+                    Console.WriteLine($"Debug: Received data: {data}");
+                }
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine($"Debug: Socket error while receiving on {multicastAddress}:{port} - {ex.Message}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Debug: Unexpected error while receiving - {ex.Message}");
+            }
+            finally
+            {
+                _receiveClient?.Close();
+                Console.WriteLine($"Debug: Receiver closed on {multicastAddress}:{port}");
+            }
+        }
+
         private void btnStop_Click(object sender, EventArgs e)
         {
             Console.WriteLine($"Debug: btnStop_Click triggered at {DateTime.Now}");
-            _StopLoad = true;
+            _StopLoad = true; // Dừng gửi
+            _isReceiving = false; // Dừng nhận
+            _receiveClient?.Close(); // Đóng socket nhận nếu có
             Console.WriteLine("Debug: Stop signal sent");
+        }
+
+        private void UpdateLog(string data)
+        {
+            try
+            {
+                Directory.CreateDirectory(Path.GetDirectoryName(_logFilePath) ?? "logs");
+                File.AppendAllText(_logFilePath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} - {data}{Environment.NewLine}");
+                Console.WriteLine($"Debug: Logged to {_logFilePath}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Debug: Error writing log - {ex.Message}");
+            }
         }
     }
 }
