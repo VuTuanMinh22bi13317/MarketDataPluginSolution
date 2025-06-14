@@ -15,7 +15,7 @@ Name="HSX"
   
   
   <!--\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\HNX\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\-->
-  <Groups>
+  <!--<Groups>
     <Group
         Name ="BDX"
         GroupKey="BDX"
@@ -886,13 +886,13 @@ Name="HSX"
             />
     </Group>
   
-  </Groups>
+  </Groups>-->
 
   
   
   
   <!--\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\HSX\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\-->
-  <!--<Groups>
+  <Groups>
     <Group
       Name ="BDO"
       GroupKey="BDO"
@@ -1414,7 +1414,7 @@ Name="HSX"
                 Debug="None"
               />
     </Group>
-  </Groups>-->
+  </Groups>
   
   <!---->
 </Config>

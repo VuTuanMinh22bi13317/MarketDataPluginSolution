@@ -18,7 +18,8 @@ namespace FixMessageParserApp
             {
                 // Set paths for the config file and folder with .raw files
                 string configFile = @"C:/Users/Admin/MarketDataPluginSolution/MarketDataPlugin/Specs/MDDS-Specs.xml";
-                string folderPath = @"C:/Users/Admin/Downloads/20250416 (1)/20250416";
+                string folderPath = @"C:\Users\Admin\Downloads\raw_mdds\raw_mdds\hsx";
+                //string folderPath = @"C:\Users\Admin\Downloads\raw_mdds\raw_mdds\hnx"; // Uncomment for HNX
 
                 // Check if the folder exists
                 if (!Directory.Exists(folderPath))
